@@ -884,6 +884,58 @@ out:
 }
 
 /*
+ * encrypted_alter - Alter an encrypted key in a type-specific way
+ */
+static long encrypted_alter(struct key *key, char *command,
+			    void *data, size_t data_size)
+{
+	static const char expected_command[] = "encrypted change-master-key";
+	struct encrypted_key_payload *epayload, *new_epayload;
+	char *new_master_desc = NULL;
+	const char *format = NULL;
+	int ret;
+
+	if (!data || data_size > 32767)
+		return -EINVAL;
+
+	if (memcmp(command, expected_command, sizeof(expected_command) - 1) != 0)
+		return -EINVAL;
+
+	ret = datablob_parse(data, &format, &new_master_desc, NULL, NULL);
+	if (ret < 0)
+		return ret;
+
+	down_write(&key->sem);
+	epayload = rcu_dereference_protected(key->payload.rcudata, &key->sem);
+
+	ret = valid_master_desc(new_master_desc, epayload->master_desc);
+	if (ret < 0) {
+		up_write(&key->sem);
+		return ret;
+	}
+
+	new_epayload = encrypted_key_alloc(key, epayload->format,
+					   new_master_desc, epayload->datalen);
+	if (IS_ERR(new_epayload)) {
+		up_write(&key->sem);
+		return PTR_ERR(new_epayload);
+	}
+
+	__ekey_init(new_epayload, epayload->format, new_master_desc,
+		    epayload->datalen);
+
+	memcpy(new_epayload->iv, epayload->iv, ivsize);
+	memcpy(new_epayload->payload_data, epayload->payload_data,
+	       epayload->payload_datalen);
+
+	rcu_assign_keypointer(key, new_epayload);
+
+	up_write(&key->sem);
+	call_rcu(&epayload->rcu, encrypted_rcu_free);
+	return 0;
+}
+
+/*
  * encrypted_read - format and copy the encrypted data to userspace
  *
  * The resulting datablob format is:
@@ -974,6 +1026,7 @@ struct key_type key_type_encrypted = {
 	.destroy = encrypted_destroy,
 	.describe = user_describe,
 	.read = encrypted_read,
+	.alter = encrypted_alter,
 };
 EXPORT_SYMBOL_GPL(key_type_encrypted);
 
