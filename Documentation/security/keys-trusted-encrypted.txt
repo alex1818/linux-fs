@@ -11,7 +11,7 @@ in hex ascii for convenience, and are integrity verified.
 Trusted Keys use a TPM both to generate and to seal the keys.  Keys are sealed
 under a 2048 bit RSA key in the TPM, and optionally sealed to specified PCR
 (integrity measurement) values, and only unsealed by the TPM, if PCRs and blob
-integrity verifications match.  A loaded Trusted Key can be updated with new
+integrity verifications match.  A loaded Trusted Key can be altered with new
 (future) PCR values, so keys are easily migrated to new pcr values, such as
 when the kernel and initramfs are updated.  The same key can have many saved
 blobs under different PCR values, so multiple boots are easily supported.
@@ -23,7 +23,8 @@ trouser's utility: "tpm_takeownership -u -z".
 Usage:
     keyctl add trusted name "new keylen [options]" ring
     keyctl add trusted name "load hex_blob [pcrlock=pcrnum]" ring
-    keyctl update key "update [options]"
+    keyctl alter <keyid> encrypted <command> ["options"]
+    echo "options" | keyctl palter <keyid> encrypted <command>
     keyctl print keyid
 
     options:
@@ -61,7 +62,7 @@ Usage:
     keyctl add encrypted name "new [format] key-type:master-key-name keylen"
         ring
     keyctl add encrypted name "load hex_blob" ring
-    keyctl update keyid "update key-type:master-key-name"
+    keyctl alter keyid encrypted change-master-key "key-type:master-key-name"
 
 format:= 'default | ecryptfs'
 key-type:= 'trusted' | 'user'
@@ -109,7 +110,7 @@ Load a trusted key from the saved blob:
 
 Reseal a trusted key under new pcr values:
 
-    $ keyctl update 268728824 "update pcrinfo=`cat pcr.blob`"
+    $ cat pcr.blob | keyctl palter 268728824 encrypted set-pcrinfo
     $ keyctl print 268728824
     010100000000002c0002800093c35a09b70fff26e7a98ae786c641e678ec6ffb6b46d805
     77c8a6377aed9d3219c6dfec4b23ffe3000001005d37d472ac8a44023fbb3d18583a4f73

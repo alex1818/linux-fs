@@ -595,7 +595,7 @@ out:
 }
 
 /* Allocate memory for decrypted key and datablob. */
-static struct encrypted_key_payload *encrypted_key_alloc(struct key *key,
+static struct encrypted_key_payload *encrypted_key_alloc(size_t *_quotalen,
 							 const char *format,
 							 const char *master_desc,
 							 const char *datalen)
@@ -632,10 +632,7 @@ static struct encrypted_key_payload *encrypted_key_alloc(struct key *key,
 	datablob_len = format_len + 1 + strlen(master_desc) + 1
 	    + strlen(datalen) + 1 + ivsize + 1 + encrypted_datalen;
 
-	ret = key_payload_reserve(key, payload_datalen + datablob_len
-				  + HASH_SIZE + 1);
-	if (ret < 0)
-		return ERR_PTR(ret);
+	*_quotalen = payload_datalen + datablob_len + HASH_SIZE + 1;
 
 	epayload = kzalloc(sizeof(*epayload) + payload_datalen +
 			   datablob_len + HASH_SIZE + 1, GFP_KERNEL);
@@ -766,15 +763,11 @@ static int encrypted_init(struct encrypted_key_payload *epayload,
 }
 
 /*
- * encrypted_instantiate - instantiate an encrypted key
- *
- * Decrypt an existing encrypted datablob or create a new encrypted key
- * based on a kernel random number.
+ * encrypted_preparse - Preparse the payload blob for an encrypted key.
  *
  * On success, return 0. Otherwise return errno.
  */
-static int encrypted_instantiate(struct key *key,
-				 struct key_preparsed_payload *prep)
+static int encrypted_preparse(struct key_preparsed_payload *prep)
 {
 	struct encrypted_key_payload *epayload = NULL;
 	char *datablob = NULL;
@@ -798,23 +791,53 @@ static int encrypted_instantiate(struct key *key,
 	if (ret < 0)
 		goto out;
 
-	epayload = encrypted_key_alloc(key, format, master_desc,
+	epayload = encrypted_key_alloc(&prep->quotalen, format, master_desc,
 				       decrypted_datalen);
 	if (IS_ERR(epayload)) {
 		ret = PTR_ERR(epayload);
 		goto out;
 	}
-	ret = encrypted_init(epayload, key->description, format, master_desc,
+	ret = encrypted_init(epayload, prep->description, format, master_desc,
 			     decrypted_datalen, hex_encoded_iv);
 	if (ret < 0) {
 		kfree(epayload);
 		goto out;
 	}
 
-	rcu_assign_keypointer(key, epayload);
+	prep->payload[0] = epayload;
+
 out:
 	kfree(datablob);
 	return ret;
+}
+
+/*
+ * encrypted_free_preparse - Clean up preparse data for an encrypted key
+ */
+static void encrypted_free_preparse(struct key_preparsed_payload *prep)
+{
+	struct encrypted_key_payload *epayload = prep->payload[0];
+
+	if (epayload) {
+		memset(epayload->decrypted_data, 0,
+		       epayload->decrypted_datalen);
+		kfree(epayload);
+	}
+}
+
+static int encrypted_instantiate(struct key *key,
+				 struct key_preparsed_payload *prep)
+{
+	struct encrypted_key_payload *epayload = prep->payload[0];
+	int ret;
+
+	ret = key_payload_reserve(key, prep->quotalen);
+	if (ret < 0)
+		return ret;
+
+	rcu_assign_keypointer(key, epayload);
+	prep->payload[0] = NULL;
+	return 0;
 }
 
 static void encrypted_rcu_free(struct rcu_head *rcu)
@@ -837,50 +860,15 @@ static void encrypted_rcu_free(struct rcu_head *rcu)
  */
 static int encrypted_update(struct key *key, struct key_preparsed_payload *prep)
 {
-	struct encrypted_key_payload *epayload = key->payload.data;
-	struct encrypted_key_payload *new_epayload;
-	char *buf;
-	char *new_master_desc = NULL;
-	const char *format = NULL;
-	size_t datalen = prep->datalen;
-	int ret = 0;
+	struct encrypted_key_payload *old;
+	struct encrypted_key_payload *new = prep->payload[0];
 
-	if (datalen <= 0 || datalen > 32767 || !prep->data)
-		return -EINVAL;
+	old = rcu_dereference_protected(key->payload.rcudata, &key->sem);
 
-	buf = kmalloc(datalen + 1, GFP_KERNEL);
-	if (!buf)
-		return -ENOMEM;
-
-	buf[datalen] = 0;
-	memcpy(buf, prep->data, datalen);
-	ret = datablob_parse(buf, &format, &new_master_desc, NULL, NULL);
-	if (ret < 0)
-		goto out;
-
-	ret = valid_master_desc(new_master_desc, epayload->master_desc);
-	if (ret < 0)
-		goto out;
-
-	new_epayload = encrypted_key_alloc(key, epayload->format,
-					   new_master_desc, epayload->datalen);
-	if (IS_ERR(new_epayload)) {
-		ret = PTR_ERR(new_epayload);
-		goto out;
-	}
-
-	__ekey_init(new_epayload, epayload->format, new_master_desc,
-		    epayload->datalen);
-
-	memcpy(new_epayload->iv, epayload->iv, ivsize);
-	memcpy(new_epayload->payload_data, epayload->payload_data,
-	       epayload->payload_datalen);
-
-	rcu_assign_keypointer(key, new_epayload);
-	call_rcu(&epayload->rcu, encrypted_rcu_free);
-out:
-	kfree(buf);
-	return ret;
+	rcu_assign_keypointer(key, new);
+	prep->payload[0] = NULL;
+	call_rcu(&old->rcu, encrypted_rcu_free);
+	return 0;
 }
 
 /*
@@ -893,6 +881,7 @@ static long encrypted_alter(struct key *key, char *command,
 	struct encrypted_key_payload *epayload, *new_epayload;
 	char *new_master_desc = NULL;
 	const char *format = NULL;
+	size_t quotalen;
 	int ret;
 
 	if (!data || data_size > 32767)
@@ -914,7 +903,7 @@ static long encrypted_alter(struct key *key, char *command,
 		return ret;
 	}
 
-	new_epayload = encrypted_key_alloc(key, epayload->format,
+	new_epayload = encrypted_key_alloc(&quotalen, epayload->format,
 					   new_master_desc, epayload->datalen);
 	if (IS_ERR(new_epayload)) {
 		up_write(&key->sem);
@@ -1020,6 +1009,8 @@ static void encrypted_destroy(struct key *key)
 
 struct key_type key_type_encrypted = {
 	.name = "encrypted",
+	.preparse = encrypted_preparse,
+	.free_preparse = encrypted_free_preparse,
 	.instantiate = encrypted_instantiate,
 	.update = encrypted_update,
 	.match = user_match,
