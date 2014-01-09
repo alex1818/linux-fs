@@ -264,6 +264,8 @@ static inline long keyctl_get_persistent(uid_t uid, key_serial_t destring)
 	return -EOPNOTSUPP;
 }
 #endif
+extern long keyctl_alter_key(key_serial_t, const char __user *,
+			     const void __user *, size_t);
 
 /*
  * Debugging key validation

@@ -1565,6 +1565,84 @@ error_keyring:
 }
 
 /*
+ * Alter a key in a type-dependent way.
+ *
+ * The key must grant the caller Write permission and the key type must support
+ * the alter op for this to work.
+ *
+ * If successful, 0 will be returned.  If the key type does not support the
+ * control op, then -EOPNOTSUPP will be returned.
+ */
+long keyctl_alter_key(key_serial_t id,
+		      const char __user *_command,
+		      const void __user *_data,
+		      size_t data_size)
+{
+	struct key *key;
+	key_ref_t key_ref;
+	char *command, *data;
+	long cmd_size, ret;
+
+	ret = -EINVAL;
+	if (!_command || data_size > 1024 * 1024)
+		return -EINVAL;
+	if ((data_size != 0 && !_data) ||
+	    (data_size == 0 && _data))
+		return -EINVAL;
+
+	cmd_size = strnlen_user(_command, 4096);
+	if (cmd_size < 0)
+		return cmd_size;
+	if (cmd_size > 4096 - 1)
+		return -EINVAL;
+
+	command = vmalloc(cmd_size + 1 + data_size + 1);
+	if (!command)
+		return -ENOMEM;
+
+	if (copy_from_user(command, _command, cmd_size) != 0) {
+		ret = -EFAULT;
+		goto error_buffer;
+	}
+	if (command[0] == '\0')
+		goto error_buffer;
+
+	if (_data) {
+		data = command + cmd_size + 1;
+		if (copy_from_user(data, _data, data_size) != 0) {
+			ret = -EFAULT;
+			goto error_buffer;
+		}
+		data[data_size] = 0;
+	} else {
+		data = NULL;
+	}
+
+	/* Find the target key (which must be writable) */
+	key_ref = lookup_user_key(id, 0, KEY_NEED_WRITE);
+	if (IS_ERR(key_ref)) {
+		ret = PTR_ERR(key_ref);
+		goto error_buffer;
+	}
+	key = key_ref_to_ptr(key_ref);
+
+	/* Call the alter function if available */
+	ret = -EOPNOTSUPP;
+	if (!key->type->alter)
+		goto error_key;
+
+	ret = key->type->alter(key, command, data, data_size);
+	if (ret < 0)
+		goto error_key;
+
+error_key:
+	key_put(key);
+error_buffer:
+	vfree(command);
+	return ret;
+}
+
+/*
  * The key control system call
  */
 SYSCALL_DEFINE5(keyctl, int, option, unsigned long, arg2, unsigned long, arg3,
@@ -1669,6 +1747,12 @@ SYSCALL_DEFINE5(keyctl, int, option, unsigned long, arg2, unsigned long, arg3,
 
 	case KEYCTL_GET_PERSISTENT:
 		return keyctl_get_persistent((uid_t)arg2, (key_serial_t)arg3);
+
+	case KEYCTL_ALTER:
+		return keyctl_alter_key((key_serial_t)arg2,
+					(const char __user *)arg3,
+					(const void __user *)arg4,
+					(size_t)arg5);
 
 	default:
 		return -EOPNOTSUPP;

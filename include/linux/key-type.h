@@ -128,6 +128,11 @@ struct key_type {
 	 */
 	request_key_actor_t request_key;
 
+	/* Alter a key (optional)
+	 * - The command string and the data can be modified (eg. with strsep()).
+	 */
+	long (*alter)(struct key *key, char *command, void *data, size_t data_size);
+
 	/* internal fields */
 	struct list_head	link;		/* link in types list */
 	struct lock_class_key	lock_class;	/* key->sem lock class */

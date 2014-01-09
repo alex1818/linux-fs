@@ -1325,6 +1325,40 @@ The structure has a number of fields, some of which are mandatory:
      	 The authorisation key.
 
 
+ (*) long (*alter)(struct key *key, const char *command, const void *data,
+		   size_t data_size);
+
+     This method is optional.  If provided, keyctl_alter() can be invoked from
+     userspace to make a type-specific alteration to the key.  If the method is
+     not implemented then error EOPNOTSUPP will be returned.
+
+     The method must provide its own locking against other 'writes' using the
+     key semaphore.
+
+     The command argument will point to a NUL-terminated string up to 4KB in
+     size, including the NUL terminator.  The method may modify the command
+     buffer (eg. with strsep()).
+
+     The command should begin with the type name and a space so that the method
+     can check that the command is from its expected set.  It is permitted,
+     however, to honour commands from another type's set.  This should be
+     followed by the command.
+
+     The data buffer will be NULL if userspace didn't supply any supplementary
+     data.  Otherwise it will be a copy of the user data and may be up to 1MB
+     in size.  A NUL terminator will be appended to the data for convenience,
+     but will not be included in data_size.
+
+     Both the command and the data buffers may be modified at will.
+
+     An example might be:
+
+	command:	encrypted change-master-key
+	data:		<key-id>
+
+     The return value is 0 if successful or a negative error code.
+
+
 ============================
 REQUEST-KEY CALLBACK SERVICE
 ============================

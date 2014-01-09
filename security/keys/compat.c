@@ -141,6 +141,12 @@ asmlinkage long compat_sys_keyctl(u32 option,
 	case KEYCTL_GET_PERSISTENT:
 		return keyctl_get_persistent(arg2, arg3);
 
+	case KEYCTL_ALTER:
+		return keyctl_alter_key(arg2,
+					compat_ptr(arg3),
+					compat_ptr(arg4),
+					arg5);
+
 	default:
 		return -EOPNOTSUPP;
 	}
