@@ -61,14 +61,24 @@ static void display_openssl_errors(int l)
 	}
 }
 
+static void drain_openssl_errors(void)
+{
+	const char *file;
+	int line;
 
-#define ERR(cond, ...)				  \
-	do {					  \
-		bool __cond = (cond);		  \
-		display_openssl_errors(__LINE__); \
-		if (__cond) {			  \
-			err(1, ## __VA_ARGS__);	  \
-		}				  \
+	if (ERR_peek_error() == 0)
+		return;
+	while (ERR_get_error_line(&file, &line)) {}
+}
+
+
+#define ERR(cond, ...)					\
+	do {						\
+		bool __cond = (cond);			\
+		display_openssl_errors(__LINE__);	\
+		if (__cond) {				\
+			err(1, ## __VA_ARGS__);		\
+		}					\
 	} while(0)
 
 int main(int argc, char **argv)
@@ -126,8 +136,15 @@ int main(int argc, char **argv)
 
 	b = BIO_new_file(x509_name, "rb");
 	ERR(!b, "%s", x509_name);
-        x509 = PEM_read_bio_X509(b, NULL, NULL, NULL);
+	x509 = d2i_X509_bio(b, NULL); /* Binary encoded X.509 */
+	if (!x509) {
+		BIO_reset(b);
+		x509 = PEM_read_bio_X509(b, NULL, NULL, NULL); /* PEM encoded X.509 */
+		if (x509)
+			drain_openssl_errors();
+	}
 	BIO_free(b);
+	ERR(!x509, "%s", x509_name);
 
 	/* Open the destination file now so that we can shovel the module data
 	 * across as we read it.
