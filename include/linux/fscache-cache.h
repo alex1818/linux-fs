@@ -371,6 +371,8 @@ struct fscache_object {
 #define FSCACHE_OBJECT_IS_LOOKED_UP	4	/* T if object has been looked up */
 #define FSCACHE_OBJECT_IS_AVAILABLE	5	/* T if object has become active */
 #define FSCACHE_OBJECT_RETIRED		6	/* T if object was retired on relinquishment */
+#define FSCACHE_OBJECT_KILLED_BY_CACHE	7	/* T if object was killed by the cache */
+#define FSCACHE_OBJECT_NO_SPACE		8	/* T if object was rejected due to lack of space */
 
 	struct list_head	cache_link;	/* link in cache->object_list */
 	struct hlist_node	cookie_link;	/* link in cookie->backing_objects */
@@ -550,5 +552,15 @@ extern bool fscache_object_sleep_till_congested(signed long *timeoutp);
 extern enum fscache_checkaux fscache_check_aux(struct fscache_object *object,
 					       const void *data,
 					       uint16_t datalen);
+
+extern void fscache_object_lookup_no_space(struct fscache_object *object);
+
+enum fscache_why_object_killed {
+	FSCACHE_OBJECT_IS_STALE,
+	FSCACHE_OBJECT_WAS_RETIRED,
+	FSCACHE_OBJECT_WAS_CULLED,
+};
+extern bool fscache_object_mark_killed(struct fscache_object *object,
+				       enum fscache_why_object_killed why);
 
 #endif /* _LINUX_FSCACHE_CACHE_H */

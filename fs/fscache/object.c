@@ -1016,3 +1016,45 @@ static const struct fscache_state *fscache_update_object(struct fscache_object *
 	_leave("");
 	return transit_to(WAIT_FOR_CMD);
 }
+
+/**
+ * fscache_object_lookup_no_space - Note object lookup failed due to lack of cache space
+ * @object: The object that was rejected
+ *
+ * Note that an object lookup failed or was rejected due to lack of space in
+ * the cache.
+ */
+void fscache_object_lookup_no_space(struct fscache_object *object)
+{
+	set_bit(FSCACHE_OBJECT_NO_SPACE, &object->flags);
+	fscache_stat(&fscache_n_cache_no_space_reject);
+}
+EXPORT_SYMBOL(fscache_object_lookup_no_space);
+
+/**
+ * fscache_object_mark_killed - Note that an object was killed
+ * @object: The object that was culled
+ * @why: The reason the object was killed.
+ *
+ * Note that an object was killed.  Returns true if the object was
+ * already marked killed, false if it wasn't.
+ */
+bool fscache_object_mark_killed(struct fscache_object *object,
+				enum fscache_why_object_killed why)
+{
+	if (test_and_set_bit(FSCACHE_OBJECT_NO_SPACE, &object->flags))
+		return true; /* Already killed */
+	switch (why) {
+	case FSCACHE_OBJECT_IS_STALE:
+		fscache_stat(&fscache_n_cache_stale_objects);
+		break;
+	case FSCACHE_OBJECT_WAS_RETIRED:
+		fscache_stat(&fscache_n_cache_retired_objects);
+		break;
+	case FSCACHE_OBJECT_WAS_CULLED:
+		fscache_stat(&fscache_n_cache_culled_objects);
+		break;
+	}
+	return false;
+}
+EXPORT_SYMBOL(fscache_object_mark_killed);
