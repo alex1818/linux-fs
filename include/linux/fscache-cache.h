@@ -373,6 +373,7 @@ struct fscache_object {
 #define FSCACHE_OBJECT_RETIRED		6	/* T if object was retired on relinquishment */
 #define FSCACHE_OBJECT_KILLED_BY_CACHE	7	/* T if object was killed by the cache */
 #define FSCACHE_OBJECT_NO_SPACE		8	/* T if object was rejected due to lack of space */
+#define FSCACHE_OBJECT_SET_UP_FAILED	9	/* T if object failed lookup/creation  */
 
 	struct list_head	cache_link;	/* link in cache->object_list */
 	struct hlist_node	cookie_link;	/* link in cookie->backing_objects */
