@@ -707,6 +707,19 @@ void security_inode_getsecid(const struct inode *inode, u32 *secid)
 	security_ops->inode_getsecid(inode, secid);
 }
 
+int security_inode_copy_up(struct dentry *src, struct dentry *dst)
+{
+	return security_ops->inode_copy_up(src, dst);
+}
+EXPORT_SYMBOL(security_inode_copy_up);
+
+int security_inode_copy_up_xattr(struct dentry *src, struct dentry *dst,
+				 const char *name, void *value, size_t *size)
+{
+	return security_ops->inode_copy_up_xattr(src, dst, name, value, size);
+}
+EXPORT_SYMBOL(security_inode_copy_up_xattr);
+
 int security_file_permission(struct file *file, int mask)
 {
 	int ret;
