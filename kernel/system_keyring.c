@@ -132,7 +132,7 @@ int system_verify_data(const void *data, unsigned long len,
 		goto error;
 	}
 
-	ret = pkcs7_verify(pkcs7);
+	ret = pkcs7_verify(pkcs7, PKCS7_REJECT_AUTHATTRS);
 	if (ret < 0)
 		goto error;
 

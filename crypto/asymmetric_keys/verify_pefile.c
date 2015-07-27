@@ -462,7 +462,7 @@ int verify_pefile_signature(const void *pebuf, unsigned pelen,
 	if (ret < 0)
 		goto error;
 
-	ret = pkcs7_verify(pkcs7);
+	ret = pkcs7_verify(pkcs7, PKCS7_AUTHENTICODE_AUTHATTRS);
 	if (ret < 0)
 		goto error;
 

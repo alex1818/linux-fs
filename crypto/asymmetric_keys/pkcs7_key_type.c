@@ -19,6 +19,11 @@
 #include <keys/system_keyring.h>
 #include "pkcs7_parser.h"
 
+static unsigned pkcs7_want_authattrs;
+module_param_named(authattrs, pkcs7_want_authattrs, uint, S_IWUSR | S_IRUGO);
+MODULE_PARM_DESC(pkcs7_want_authattrs,
+		 "Whether or not a PKCS#7 message should contain authattrs (0-2)");
+
 /*
  * Preparse a PKCS#7 wrapped and validated data blob.
  */
@@ -40,7 +45,9 @@ static int pkcs7_preparse(struct key_preparsed_payload *prep)
 		goto error;
 	}
 
-	ret = pkcs7_verify(pkcs7);
+	if (pkcs7_want_authattrs > 2)
+		pkcs7_want_authattrs = 0;
+	ret = pkcs7_verify(pkcs7, pkcs7_want_authattrs);
 	if (ret < 0)
 		goto error_free;
 

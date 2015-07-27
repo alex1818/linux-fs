@@ -9,6 +9,9 @@
  * 2 of the Licence, or (at your option) any later version.
  */
 
+#ifndef _CRYPTO_PKCS7_H
+#define _CRYPTO_PKCS7_H
+
 struct key;
 struct pkcs7_message;
 
@@ -33,7 +36,15 @@ extern int pkcs7_validate_trust(struct pkcs7_message *pkcs7,
 /*
  * pkcs7_verify.c
  */
-extern int pkcs7_verify(struct pkcs7_message *pkcs7);
+enum pkcs7_attr_style {
+	PKCS7_REJECT_AUTHATTRS,
+	PKCS7_REQUIRE_AUTHATTRS,
+	PKCS7_AUTHENTICODE_AUTHATTRS,
+};
+extern int pkcs7_verify(struct pkcs7_message *pkcs7,
+			enum pkcs7_attr_style attr_style);
 
 extern int pkcs7_supply_detached_data(struct pkcs7_message *pkcs7,
 				      const void *data, size_t datalen);
+
+#endif /* _CRYPTO_PKCS7_H */

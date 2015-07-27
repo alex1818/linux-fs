@@ -70,8 +70,14 @@ static int pkcs7_digest(struct pkcs7_message *pkcs7,
 	 * message digest attribute amongst them which corresponds to the
 	 * digest we just calculated.
 	 */
-	if (sinfo->msgdigest) {
+	if (sinfo->authattrs) {
 		u8 tag;
+
+		if (!sinfo->msgdigest) {
+			pr_warn("Sig %u: No messageDigest\n", sinfo->index);
+			ret = -EKEYREJECTED;
+			goto error;
+		}
 
 		if (sinfo->msgdigest_len != sinfo->sig.digest_size) {
 			pr_debug("Sig %u: Invalid digest size (%u)\n",
@@ -314,6 +320,18 @@ static int pkcs7_verify_one(struct pkcs7_message *pkcs7,
 	pr_devel("Using X.509[%u] for sig %u\n",
 		 sinfo->signer->index, sinfo->index);
 
+	/* Check that the PKCS#7 signing time is valid according to the X.509
+	 * certificate.  We can't, however, check against the system clock
+	 * since that may not have been set yet and may be wrong.
+	 */
+	if (test_bit(sinfo_has_signing_time, &sinfo->aa_set)) {
+		if (sinfo->signing_time < sinfo->signer->valid_from ||
+		    sinfo->signing_time > sinfo->signer->valid_to) {
+			pr_warn("Message signed outside of X.509 validity window\n");
+			return -EKEYREJECTED;
+		}
+	}
+
 	/* Verify the PKCS#7 binary against the key */
 	ret = public_key_verify_signature(sinfo->signer->pub, &sinfo->sig);
 	if (ret < 0)
@@ -328,6 +346,7 @@ static int pkcs7_verify_one(struct pkcs7_message *pkcs7,
 /**
  * pkcs7_verify - Verify a PKCS#7 message
  * @pkcs7: The PKCS#7 message to be verified
+ * @attr_style: Whether we want authenticatedAttributes or not.
  *
  * Verify a PKCS#7 message is internally consistent - that is, the data digest
  * matches the digest in the AuthAttrs and any signature in the message or one
@@ -350,7 +369,7 @@ static int pkcs7_verify_one(struct pkcs7_message *pkcs7,
  *  (*) 0 if all the signature chains that don't incur -ENOPKG can be verified
  *	(note that a signature chain may be of zero length), or:
  */
-int pkcs7_verify(struct pkcs7_message *pkcs7)
+int pkcs7_verify(struct pkcs7_message *pkcs7, enum pkcs7_attr_style attr_style)
 {
 	struct pkcs7_signed_info *sinfo;
 	struct x509_certificate *x509;
@@ -358,6 +377,36 @@ int pkcs7_verify(struct pkcs7_message *pkcs7)
 	int ret, n;
 
 	kenter("");
+
+	switch (attr_style) {
+	case PKCS7_REJECT_AUTHATTRS:
+		if (pkcs7->data_type != OID_data) {
+			pr_warn("Signed message is not ordinary data\n");
+			return -EKEYREJECTED;
+		}
+		if (pkcs7->have_authattrs) {
+			pr_warn("Message contains unwanted authAttrs\n");
+			return -EKEYREJECTED;
+		}
+		break;
+	case PKCS7_REQUIRE_AUTHATTRS:
+		if (pkcs7->data_type != OID_data) {
+			pr_warn("Signed message is not ordinary data\n");
+			return -EKEYREJECTED;
+		}
+		if (!pkcs7->have_authattrs) {
+			pr_warn("Message does not contain authAttrs\n");
+			return -EKEYREJECTED;
+		}
+		break;
+	case PKCS7_AUTHENTICODE_AUTHATTRS:
+		if (pkcs7->data_type != OID_msIndirectData) {
+			pr_warn("Signed message is not Authenticode\n");
+			return -EKEYREJECTED;
+		}
+		/* Authattr presence checked in parser */
+		break;
+	}
 
 	for (n = 0, x509 = pkcs7->certs; x509; x509 = x509->next, n++) {
 		ret = x509_get_sig_params(x509);
