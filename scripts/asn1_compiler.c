@@ -1232,17 +1232,18 @@ static void dump_element(const struct element *e, int level)
 			asn1_methods[e->method],
 			e->tag);
 
-	printf("%c%c%c%c%c %c %*s[*] \e[33m%s\e[m %s %s\n",
+	printf("%c%c%c%c%c %c %*s[*] \e[33m%s\e[m %s %s \e[35m%s\e[m\n",
 	       e->flags & ELEMENT_IMPLICIT ? 'I' : '-',
 	       e->flags & ELEMENT_EXPLICIT ? 'E' : '-',
 	       e->flags & ELEMENT_TAG_SPECIFIED ? 'T' : '-',
 	       e->flags & ELEMENT_SKIPPABLE ? 'S' : '-',
 	       e->flags & ELEMENT_CONDITIONAL ? 'C' : '-',
-	       "-tTqQcato"[e->compound],
+	       "-tTqQcaro"[e->compound],
 	       level, "",
 	       tag,
 	       tname,
-	       name);
+	       name,
+	       e->action ? e->action->name : "");
 	if (e->compound == TYPE_REF)
 		dump_element(e->type->type->element, level + 3);
 	else
@@ -1526,7 +1527,8 @@ dont_render_tag:
 	case TYPE_REF:
 		render_element(out, e->type->type->element, tag);
 		if (e->action)
-			render_opcode(out, "ASN1_OP_ACT,\n");
+			render_opcode(out, "ASN1_OP_%sACT,\n",
+				      skippable ? "MAYBE_" : "");
 		break;
 
 	case SEQUENCE:
