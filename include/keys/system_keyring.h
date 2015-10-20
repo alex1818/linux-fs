@@ -15,19 +15,11 @@
 #ifdef CONFIG_SYSTEM_TRUSTED_KEYRING
 
 #include <linux/key.h>
-#include <linux/verification.h>
-#include <crypto/public_key.h>
 
-extern struct key *system_trusted_keyring;
-static inline struct key *get_system_trusted_keyring(void)
-{
-	return system_trusted_keyring;
-}
-#else
-static inline struct key *get_system_trusted_keyring(void)
-{
-	return NULL;
-}
+extern int restrict_link_by_system_trusted(struct key *keyring,
+					   const struct key_type *type,
+					   unsigned long flags,
+					   const union key_payload *payload);
 #endif
 
 #ifdef CONFIG_IMA_MOK_KEYRING

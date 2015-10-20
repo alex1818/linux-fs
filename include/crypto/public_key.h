@@ -98,6 +98,13 @@ extern void public_key_free(struct public_key *key,
 			    struct public_key_signature *sig);
 
 struct key;
+struct key_type;
+union key_payload;
+
+extern int public_key_restrict_link(struct key *trust_keyring,
+				    const struct key_type *type,
+				    const union key_payload *payload);
+
 extern int verify_signature(const struct key *key,
 			    const struct public_key_signature *sig);
 

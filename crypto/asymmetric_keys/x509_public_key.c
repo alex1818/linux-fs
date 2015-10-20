@@ -97,7 +97,6 @@ error:
 	pr_devel("<==%s() = %d\n", __func__, ret);
 	return ret;
 }
-EXPORT_SYMBOL_GPL(x509_get_sig_params);
 
 /*
  * Check for self-signedness in an X.509 cert and if found, check the signature
@@ -185,30 +184,13 @@ static int x509_key_preparse(struct key_preparsed_payload *prep)
 	cert->pub->algo = pkey_algo[cert->pub->pkey_algo];
 	cert->pub->id_type = PKEY_ID_X509;
 
-	/* See if we can derive the trustability of this certificate.
-	 *
-	 * When it comes to self-signed certificates, we cannot evaluate
-	 * trustedness except by the fact that we obtained it from a trusted
-	 * location.  So we just rely on x509_validate_trust() failing in this
-	 * case.
-	 *
-	 * Note that there's a possibility of a self-signed cert matching a
-	 * cert that we have (most likely a duplicate that we already trust) -
-	 * in which case it will be marked trusted.
-	 */
-	if (cert->unsupported_sig || cert->self_signed) {
+	if (cert->unsupported_sig) {
 		public_key_free(NULL, cert->sig);
 		cert->sig = NULL;
 	} else {
 		pr_devel("Cert Signature: %s + %s\n",
 			 pkey_algo_name[cert->sig->pkey_algo],
 			 hash_algo_name[cert->sig->pkey_hash_algo]);
-
-		ret = x509_validate_trust(cert, get_system_trusted_keyring());
-		if (ret == -EKEYREJECTED)
-			goto error_free_cert;
-		if (!ret)
-			prep->trusted = true;
 	}
 
 	/* Propose a description */

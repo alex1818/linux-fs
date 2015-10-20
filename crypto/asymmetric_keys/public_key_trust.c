@@ -15,7 +15,6 @@
 #include <linux/err.h>
 #include "asymmetric_keys.h"
 #include "public_key.h"
-#include "x509_parser.h"
 
 static bool use_builtin_keys;
 static struct asymmetric_key_id *ca_keyid;
@@ -145,43 +144,63 @@ reject:
 EXPORT_SYMBOL_GPL(request_asymmetric_key);
 
 /*
+ * Try to find a trust relationship for a new key.
+ */
+static int public_key_verify_trust(struct key *trust_keyring,
+				   const struct public_key_signature *sig)
+{
+	struct key *key;
+	int ret;
+
+
+	/* See if we have a key that signed this one. */
+	key = request_asymmetric_key(trust_keyring,
+				     sig->auth_ids[0],
+				     sig->auth_ids[1],
+				     false);
+	if (IS_ERR(key))
+		return -ENOKEY;
+
+	if (use_builtin_keys && !test_bit(KEY_FLAG_BUILTIN, &key->flags))
+		ret = -ENOKEY;
+	else
+		ret = verify_signature(key, sig);
+	key_put(key);
+	return ret;
+}
+
+/**
+ * public_key_restrict_link - Restrict additions to a ring of public keys
+ * @trust_keyring: A ring of keys that can be used to vouch for the new cert.
+ * @type: The type of key being added.
+ * @payload: The payload of the new key.
+ *
  * Check the new certificate against the ones in the trust keyring.  If one of
  * those is the signing key and validates the new certificate, then mark the
  * new certificate as being trusted.
  *
- * Return 0 if the new certificate was successfully validated, 1 if we couldn't
- * find a matching parent certificate in the trusted list and an error if there
- * is a matching certificate but the signature check fails.
+ * Returns 0 if the new certificate was accepted, -ENOKEY if we couldn't find a
+ * matching parent certificate in the trusted list, -EKEYREJECTED if the
+ * signature check fails or the key is blacklisted and some other error if
+ * there is a matching certificate but the signature check cannot be performed.
  */
-int x509_validate_trust(struct x509_certificate *cert,
-			struct key *trust_keyring)
+int public_key_restrict_link(struct key *trust_keyring,
+			     const struct key_type *type,
+			     const union key_payload *payload)
 {
-	struct public_key_signature *sig = cert->sig;
-	struct key *key;
-	int ret = 1;
+	const struct public_key_signature *sig;
 
-	if (!sig->auth_ids[0] && !sig->auth_ids[1])
-		return 1;
+	pr_devel("==>%s()\n", __func__);
 
-	if (!trust_keyring)
+	if (type != &key_type_asymmetric)
 		return -EOPNOTSUPP;
+
+	sig = payload->data[asym_auth];
+	if (!sig->auth_ids[0] && !sig->auth_ids[1])
+		return 0;
+
 	if (ca_keyid && !asymmetric_key_id_partial(sig->auth_ids[1], ca_keyid))
 		return -EPERM;
-	if (cert->unsupported_sig)
-		return -ENOPKG;
 
-	key = request_asymmetric_key(trust_keyring,
-				     sig->auth_ids[0], sig->auth_ids[1], false);
-	if (IS_ERR(key))
-		return PTR_ERR(key);
-
-	if (!use_builtin_keys ||
-	    test_bit(KEY_FLAG_BUILTIN, &key->flags)) {
-		ret = public_key_verify_signature(
-			key->payload.data[asym_crypto], cert->sig);
-		if (ret == -ENOPKG)
-			cert->unsupported_sig = true;
-	}
-	key_put(key);
-	return ret;
+	return public_key_verify_trust(trust_keyring, sig);
 }
