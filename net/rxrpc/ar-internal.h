@@ -9,7 +9,11 @@
  * 2 of the License, or (at your option) any later version.
  */
 
+#include <linux/net.h>
+#include <net/sock.h>
+#include <net/af_rxrpc.h>
 #include <rxrpc/packet.h>
+#include "objcache.h"
 
 #if 0
 #define CHECK_SLAB_OKAY(X)				     \
@@ -467,6 +471,41 @@ extern atomic_t rxrpc_n_skbs;
 extern u32 rxrpc_epoch;
 extern atomic_t rxrpc_debug_id;
 extern struct workqueue_struct *rxrpc_workqueue;
+ 
+static inline void __rxrpc_queue_obj(struct work_struct *work,
+				     struct objcache *cache,
+				     struct obj_node *obj)
+{
+	/* Pass the caller's ref to the workqueue or drop it if already
+	 * queued.
+	 */
+	if (!queue_work(rxrpc_workqueue, work))
+		objcache_put(cache, obj);
+}
+
+static inline void rxrpc_queue_obj(struct work_struct *work,
+				   struct objcache *cache,
+				   struct obj_node *obj)
+{
+	/* We don't want to queue the work item if the object is dead - but
+	 * whilst we want to avoid calling objcache_put(), we really, really
+	 * want to avoid calling cancel_sync_wait() or flush_workqueue().
+	 *
+	 * There is, however, a gap between calling queue_work() and doing
+	 * something conditionally on its result that would allow the work item
+	 * to be happen if we get interrupted - so we can't just increment the
+	 * usage count if we queued the work and decrement it in the work func
+	 * as the work func might decrement it *before* we manage to increment
+	 * it here.
+	 *
+	 * So we have to attempt to increment the count before trying the queue
+	 * operation and then correct afterwards if the work was already
+	 * queued.
+	 */
+	if (objcache_get_maybe(obj) &&
+	    !queue_work(rxrpc_workqueue, work))
+		objcache_put(cache, obj);
+}
 
 /*
  * ar-accept.c
