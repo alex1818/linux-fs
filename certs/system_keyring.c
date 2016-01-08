@@ -31,7 +31,6 @@ extern __initconst const unsigned long system_certificate_list_size;
  */
 int restrict_link_by_system_trusted(struct key *keyring,
 				    const struct key_type *type,
-				    unsigned long flags,
 				    const union key_payload *payload)
 {
 	return public_key_restrict_link(system_trusted_keyring, type, payload);

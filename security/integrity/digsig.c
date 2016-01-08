@@ -50,12 +50,11 @@ static bool init_keyring __initdata;
  */
 static int restrict_link_by_ima_mok(struct key *keyring,
 				    const struct key_type *type,
-				    unsigned long flags,
 				    const union key_payload *payload)
 {
 	int ret;
 
-	ret = restrict_link_by_system_trusted(keyring, type, flags, payload);
+	ret = restrict_link_by_system_trusted(keyring, type, payload);
 	if (ret != -ENOKEY)
 		return ret;
 
@@ -96,7 +95,6 @@ int __init integrity_init_keyring(const unsigned int id)
 {
 	int (*restrict_link)(struct key *,
 			     const struct key_type *,
-			     unsigned long,
 			     const union key_payload *) = NULL;
 	const struct cred *cred = current_cred();
 	int err = 0;
