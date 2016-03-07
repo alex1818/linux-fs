@@ -617,14 +617,6 @@ int rxrpc_client_sendmsg(struct rxrpc_sock *, struct rxrpc_transport *,
 int rxrpc_server_sendmsg(struct rxrpc_sock *, struct msghdr *, size_t);
 
 /*
- * ar-peer.c
- */
-struct rxrpc_peer *rxrpc_get_peer(struct sockaddr_rxrpc *, gfp_t);
-void rxrpc_put_peer(struct rxrpc_peer *);
-struct rxrpc_peer *rxrpc_find_peer(struct rxrpc_local *, __be32, __be16);
-void __exit rxrpc_destroy_all_peers(void);
-
-/*
  * ar-proc.c
  */
 extern const char *const rxrpc_call_states[];
@@ -693,6 +685,14 @@ static inline void rxrpc_put_local(struct rxrpc_local *local)
 {
 	objcache_put(&rxrpc_local_cache, &local->obj);
 }
+
+/*
+ * peer-object.c
+ */
+struct rxrpc_peer *rxrpc_get_peer(struct sockaddr_rxrpc *, gfp_t);
+void rxrpc_put_peer(struct rxrpc_peer *);
+struct rxrpc_peer *rxrpc_find_peer(struct rxrpc_local *, __be32, __be16);
+void __exit rxrpc_destroy_all_peers(void);
 
 /*
  * sysctl.c

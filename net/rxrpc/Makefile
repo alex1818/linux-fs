@@ -13,14 +13,14 @@ af-rxrpc-y := \
 	ar-input.o \
 	ar-key.o \
 	ar-output.o \
-	ar-peer.o \
 	ar-recvmsg.o \
 	ar-security.o \
 	ar-skbuff.o \
 	ar-transport.o \
 	local-event.o \
 	local-object.o \
-	objcache.o
+	objcache.o \
+	peer-object.o
 
 af-rxrpc-$(CONFIG_PROC_FS) += ar-proc.o
 af-rxrpc-$(CONFIG_SYSCTL) += sysctl.o
