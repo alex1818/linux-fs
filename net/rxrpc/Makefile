@@ -12,13 +12,13 @@ af-rxrpc-y := \
 	ar-error.o \
 	ar-input.o \
 	ar-key.o \
-	ar-local.o \
 	ar-output.o \
 	ar-peer.o \
 	ar-recvmsg.o \
 	ar-security.o \
 	ar-skbuff.o \
 	ar-transport.o \
+	local-event.o \
 	local-object.o \
 	objcache.o
 

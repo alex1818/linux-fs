@@ -596,11 +596,6 @@ int rxrpc_queue_rcv_skb(struct rxrpc_call *, struct sk_buff *, bool, bool);
 void rxrpc_fast_process_packet(struct rxrpc_call *, struct sk_buff *);
 
 /*
- * ar-local.c
- */
-extern void rxrpc_process_local_events(struct work_struct *);
-
-/*
  * ar-key.c
  */
 extern struct key_type key_type_rxrpc;
@@ -670,6 +665,11 @@ void rxrpc_put_transport(struct rxrpc_transport *);
 void __exit rxrpc_destroy_all_transports(void);
 struct rxrpc_transport *rxrpc_find_transport(struct rxrpc_local *,
 					     struct rxrpc_peer *);
+
+/*
+ * local-event.c
+ */
+extern void rxrpc_process_local_events(struct work_struct *);
 
 /*
  * local-object.c
