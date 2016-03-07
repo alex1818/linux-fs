@@ -52,6 +52,11 @@ struct objcache {
 	unsigned long (*hash_key_2)(const void *);
 	int (*cmp_key_2)(const struct obj_node *, const void *);
 
+	/* If the cache should be visible through /proc, the following
+	 * should be implemented.
+	 */
+	int (*seq_show)(struct seq_file *, void *);
+
 	/* Internal data */
 	spinlock_t		lock;
 	atomic_t		count;
@@ -64,6 +69,7 @@ struct objcache {
 	time64_t		gc_next_run;
 	unsigned		gc_bucket;
 	unsigned		gc_last_bucket;
+	struct seq_operations	seq_ops;
 };
 
 static inline bool objcache_get_maybe(struct obj_node *obj)
@@ -85,5 +91,7 @@ extern struct obj_node *objcache_lookup_rcu_2(struct objcache *, const void *);
 extern void objcache_put(struct objcache *, struct obj_node *);
 extern void objcache_obj_rcu_done(struct objcache *);
 extern void objcache_clear(struct objcache *);
+
+extern const struct file_operations objcache_seq_fops;
 
 #endif /* _OBJCACHE_H */

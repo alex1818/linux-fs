@@ -11,6 +11,8 @@
 
 #include <linux/sched.h>
 #include <linux/hash.h>
+#include <linux/proc_fs.h>
+#include <linux/seq_file.h>
 #include "ar-internal.h"
 #include "objcache.h"
 
@@ -475,3 +477,105 @@ void objcache_clear(struct objcache *cache)
 
 	_leave("");
 }
+
+/*
+ * Generate a list of cached objects in /proc/net/x
+ */
+static void *objcache_seq_start(struct seq_file *seq, loff_t *_pos)
+	__acquires(rcu)
+{
+	struct objcache *cache = seq->private;
+	struct hlist_head *hash;
+	loff_t pos_l = *_pos;
+	unsigned pos = pos_l, bucket;
+	void *ret;
+
+	if (*_pos > UINT_MAX)
+		return NULL;
+	bucket = pos >> 16;
+	pos &= 0xffff;
+
+	rcu_read_lock();
+
+	do {
+		hash = &cache->hash_table[bucket];
+		if (bucket == 0)
+			ret = seq_hlist_start_head(hash, pos);
+		else
+			ret = seq_hlist_start(hash, pos);
+	} while (!ret && (bucket++,
+			  *_pos = bucket << 16,
+			  bucket < cache->nr_buckets));
+
+	return ret;
+}
+
+static void *objcache_seq_next(struct seq_file *seq, void *v, loff_t *_pos)
+{
+	struct objcache *cache = seq->private;
+	struct hlist_head *hash;
+	unsigned bucket;
+	void *ret;
+
+	if (*_pos > UINT_MAX)
+		return NULL;
+	bucket = *_pos >> 16;
+	hash = &cache->hash_table[bucket];
+	ret = seq_hlist_next(v, hash, _pos);
+	if (ret)
+		return ret;
+
+	while (bucket++,
+	       *_pos = bucket << 16,
+	       bucket < cache->nr_buckets
+	       ) {
+		hash = &cache->hash_table[bucket];
+		ret = seq_hlist_start(hash, 0);
+		if (ret)
+			break;
+	}
+	return ret;
+}
+
+static void objcache_seq_stop(struct seq_file *seq, void *v)
+	__releases(rcu)
+{
+	rcu_read_unlock();
+}
+
+static int objcache_seq_show(struct seq_file *seq, void *v)
+{
+	struct objcache *cache = seq->private;
+	struct obj_node *obj = v;
+
+	return cache->seq_show(seq, obj);
+}
+
+static const struct seq_operations objcache_seq_ops = {
+	.start  = objcache_seq_start,
+	.next   = objcache_seq_next,
+	.stop   = objcache_seq_stop,
+	.show   = objcache_seq_show,
+};
+
+static int objcache_seq_open(struct inode *inode, struct file *file)
+{
+	struct objcache *cache = PDE_DATA(inode);
+	struct seq_file *seq;
+	int ret;
+
+	ret = seq_open(file, &objcache_seq_ops);
+	if (ret == 0) {
+		seq = file->private_data;
+		seq->private = cache;
+	}
+	return ret;
+}
+
+const struct file_operations objcache_seq_fops = {
+	.owner		= THIS_MODULE,
+	.open		= objcache_seq_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= seq_release,
+};
