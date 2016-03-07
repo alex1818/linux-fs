@@ -791,6 +791,8 @@ static int __init af_rxrpc_init(void)
 
 	rxrpc_epoch = get_seconds();
 
+	objcache_init(&rxrpc_local_cache);
+
 	ret = -ENOMEM;
 	rxrpc_call_jar = kmem_cache_create(
 		"rxrpc_call_jar", sizeof(struct rxrpc_call), 0,
@@ -856,6 +858,7 @@ error_proto:
 error_work_queue:
 	kmem_cache_destroy(rxrpc_call_jar);
 error_call_jar:
+	objcache_clear(&rxrpc_local_cache);
 	return ret;
 }
 
@@ -874,7 +877,7 @@ static void __exit af_rxrpc_exit(void)
 	rxrpc_destroy_all_connections();
 	rxrpc_destroy_all_transports();
 	rxrpc_destroy_all_peers();
-	rxrpc_destroy_all_locals();
+	objcache_clear(&rxrpc_local_cache);
 
 	ASSERTCMP(atomic_read(&rxrpc_n_skbs), ==, 0);
 

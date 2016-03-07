@@ -82,13 +82,14 @@ static void rxrpc_send_version_request(struct rxrpc_local *local,
  */
 void rxrpc_process_local_events(struct work_struct *work)
 {
-	struct rxrpc_local *local = container_of(work, struct rxrpc_local, event_processor);
+	struct rxrpc_local *local =
+		container_of(work, struct rxrpc_local, processor);
 	struct sk_buff *skb;
 	char v;
 
 	_enter("");
 
-	atomic_inc(&local->usage);
+	rxrpc_get_local(local);
 	
 	while ((skb = skb_dequeue(&local->event_queue))) {
 		struct rxrpc_skb_priv *sp = rxrpc_skb(skb);

@@ -598,9 +598,9 @@ static void rxrpc_post_packet_to_local(struct rxrpc_local *local,
 {
 	_enter("%p,%p", local, skb);
 
-	atomic_inc(&local->usage);
+	rxrpc_get_local(local);
 	skb_queue_tail(&local->event_queue, skb);
-	rxrpc_queue_work(&local->event_processor);
+	rxrpc_queue_work(&local->processor);
 }
 
 /*
@@ -675,13 +675,13 @@ void rxrpc_data_ready(struct sock *sk)
 
 	ASSERT(!irqs_disabled());
 
-	read_lock_bh(&rxrpc_local_lock);
-	local = sk->sk_user_data;
-	if (local && atomic_read(&local->usage) > 0)
-		rxrpc_get_local(local);
-	else
-		local = NULL;
-	read_unlock_bh(&rxrpc_local_lock);
+	/* The socket is locked by the caller and this prevents the socket from
+	 * being shut down, thus preventing sk_user_data from being cleared
+	 * until this function returns.  The local endpoint may, however, be in
+	 * the process of being discarded from the cache, so we still need to
+	 * validate it.
+	 */
+	local = rxrpc_get_local_maybe(sk->sk_user_data);
 	if (!local) {
 		_leave(" [local dead]");
 		return;

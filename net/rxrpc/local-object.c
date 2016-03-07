@@ -19,38 +19,115 @@
 #include <net/af_rxrpc.h>
 #include "ar-internal.h"
 
-static LIST_HEAD(rxrpc_locals);
-DEFINE_RWLOCK(rxrpc_local_lock);
-static DECLARE_RWSEM(rxrpc_local_sem);
-static DECLARE_WAIT_QUEUE_HEAD(rxrpc_local_wq);
+static void rxrpc_local_prepare_for_gc(struct obj_node *);
+static void rxrpc_local_gc_rcu(struct rcu_head *);
+static unsigned long rxrpc_local_hash_key(const void *);
+static int rxrpc_local_cmp_key(const struct obj_node *, const void *);
 
-static void rxrpc_destroy_local(struct work_struct *work);
+static DEFINE_MUTEX(rxrpc_local_mutex);
+static struct hlist_head rxrpc_local_cache_hash[16];
+
+struct objcache rxrpc_local_cache = {
+	.name		= "locals",
+	.prepare_for_gc	= rxrpc_local_prepare_for_gc,
+	.gc_rcu		= rxrpc_local_gc_rcu,
+	.hash_key	= rxrpc_local_hash_key,
+	.cmp_key	= rxrpc_local_cmp_key,
+	.hash_table	= rxrpc_local_cache_hash,
+	.gc_delay	= 2,
+	.nr_buckets	= ARRAY_SIZE(rxrpc_local_cache_hash),
+};
 
 /*
- * allocate a new local
+ * Hash a local key.
  */
-static
-struct rxrpc_local *rxrpc_alloc_local(struct sockaddr_rxrpc *srx)
+static unsigned long rxrpc_local_hash_key(const void *_srx)
+{
+	const struct sockaddr_rxrpc *srx = _srx;
+	const u16 *p;
+	unsigned int i, size;
+	unsigned long hash_key;
+
+	_enter("%u", srx->transport.family);
+
+	hash_key = srx->transport_type;
+	hash_key += srx->transport_len;
+	hash_key += srx->transport.family;
+
+	switch (srx->transport.family) {
+	case AF_INET:
+		hash_key += (u16 __force)srx->transport.sin.sin_port;
+		size = sizeof(srx->transport.sin.sin_addr);
+		p = (u16 *)&srx->transport.sin.sin_addr;
+		break;
+	default:
+		BUG();
+	}
+
+	/* Step through the local address in 16-bit portions for speed */
+	for (i = 0; i < size; i += sizeof(*p), p++)
+		hash_key += *p;
+
+	_leave(" = 0x%lx", hash_key);
+	return hash_key;
+}
+
+/*
+ * Compare a local to a key.  Return -ve, 0 or +ve to indicate less than, same
+ * or greater than.
+ */
+static int rxrpc_local_cmp_key(const struct obj_node *obj, const void *_srx)
+{
+	const struct rxrpc_local *local =
+		container_of(obj, struct rxrpc_local, obj);
+	const struct sockaddr_rxrpc *srx = _srx;
+	int diff;
+
+	diff = ((local->srx.transport_type - srx->transport_type) ?:
+		(local->srx.transport_len - srx->transport_len) ?:
+		(local->srx.transport.family - srx->transport.family));
+	if (diff != 0)
+		return diff;
+
+	switch (srx->transport.family) {
+	case AF_INET:
+		/* If the choice of UDP port is left up to the transport, then
+		 * the endpoint record doesn't match.
+		 */
+		return ((u16 __force)local->srx.transport.sin.sin_port -
+			(u16 __force)srx->transport.sin.sin_port) ?:
+			memcmp(&local->srx.transport.sin.sin_addr,
+			       &srx->transport.sin.sin_addr,
+			       sizeof(struct in_addr));
+	default:
+		BUG();
+	}
+}
+
+/*
+ * Allocate a new local endpoint.  This is service ID independent but rather
+ * defines a specific transport endpoint.
+ */
+static struct rxrpc_local *rxrpc_alloc_local(struct sockaddr_rxrpc *srx)
 {
 	struct rxrpc_local *local;
 
 	local = kzalloc(sizeof(struct rxrpc_local), GFP_KERNEL);
 	if (local) {
-		INIT_WORK(&local->destroyer, &rxrpc_destroy_local);
 		INIT_WORK(&local->acceptor, &rxrpc_accept_incoming_calls);
 		INIT_WORK(&local->rejecter, &rxrpc_reject_packets);
-		INIT_WORK(&local->event_processor, &rxrpc_process_local_events);
+		INIT_WORK(&local->processor, &rxrpc_process_local_events);
 		INIT_LIST_HEAD(&local->services);
-		INIT_LIST_HEAD(&local->link);
 		init_rwsem(&local->defrag_sem);
 		skb_queue_head_init(&local->accept_queue);
 		skb_queue_head_init(&local->reject_queue);
 		skb_queue_head_init(&local->event_queue);
+		mutex_init(&local->conn_lock);
 		spin_lock_init(&local->lock);
 		rwlock_init(&local->services_lock);
-		atomic_set(&local->usage, 1);
 		local->debug_id = atomic_inc_return(&rxrpc_debug_id);
 		memcpy(&local->srx, srx, sizeof(*srx));
+		local->srx.srx_service = 0;
 	}
 
 	_leave(" = %p", local);
@@ -59,9 +136,9 @@ struct rxrpc_local *rxrpc_alloc_local(struct sockaddr_rxrpc *srx)
 
 /*
  * create the local socket
- * - must be called with rxrpc_local_sem writelocked
+ * - must be called with rxrpc_local_mutex locked
  */
-static int rxrpc_create_local(struct rxrpc_local *local)
+static int rxrpc_open_socket(struct rxrpc_local *local)
 {
 	struct sock *sock;
 	int ret, opt;
@@ -80,10 +157,10 @@ static int rxrpc_create_local(struct rxrpc_local *local)
 	if (local->srx.transport_len > sizeof(sa_family_t)) {
 		_debug("bind");
 		ret = kernel_bind(local->socket,
-				  (struct sockaddr *) &local->srx.transport,
+				  (struct sockaddr *)&local->srx.transport,
 				  local->srx.transport_len);
 		if (ret < 0) {
-			_debug("bind failed");
+			_debug("bind failed %d", ret);
 			goto error;
 		}
 	}
@@ -106,10 +183,6 @@ static int rxrpc_create_local(struct rxrpc_local *local)
 		goto error;
 	}
 
-	write_lock_bh(&rxrpc_local_lock);
-	list_add(&local->link, &rxrpc_locals);
-	write_unlock_bh(&rxrpc_local_lock);
-
 	/* set the socket up */
 	sock = local->socket->sk;
 	sock->sk_user_data	= local;
@@ -129,71 +202,53 @@ error:
 }
 
 /*
- * create a new local endpoint using the specified UDP address
+ * Look up or create a new local endpoint using the specified address.
  */
 struct rxrpc_local *rxrpc_lookup_local(struct sockaddr_rxrpc *srx)
 {
 	struct rxrpc_local *local;
+	struct obj_node *obj;
+	const char *new;
 	int ret;
 
-	_enter("{%d,%u,%pI4+%hu}",
-	       srx->transport_type,
-	       srx->transport.family,
-	       &srx->transport.sin.sin_addr,
-	       ntohs(srx->transport.sin.sin_port));
-
-	down_write(&rxrpc_local_sem);
-
-	/* see if we have a suitable local local endpoint already */
-	read_lock_bh(&rxrpc_local_lock);
-
-	list_for_each_entry(local, &rxrpc_locals, link) {
-		_debug("CMP {%d,%u,%pI4+%hu}",
-		       local->srx.transport_type,
-		       local->srx.transport.family,
-		       &local->srx.transport.sin.sin_addr,
-		       ntohs(local->srx.transport.sin.sin_port));
-
-		if (local->srx.transport_type != srx->transport_type ||
-		    local->srx.transport.family != srx->transport.family)
-			continue;
-
-		switch (srx->transport.family) {
-		case AF_INET:
-			if (local->srx.transport.sin.sin_port !=
-			    srx->transport.sin.sin_port)
-				continue;
-			if (memcmp(&local->srx.transport.sin.sin_addr,
-				   &srx->transport.sin.sin_addr,
-				   sizeof(struct in_addr)) != 0)
-				continue;
-			goto found_local;
-
-		default:
-			BUG();
-		}
+	if (srx->transport.family == AF_INET) {
+		_enter("{%d,%u,%pI4+%hu}",
+		       srx->transport_type,
+		       srx->transport.family,
+		       &srx->transport.sin.sin_addr,
+		       ntohs(srx->transport.sin.sin_port));
+	} else {
+		_enter("{%d,%u}",
+		       srx->transport_type,
+		       srx->transport.family);
+		return ERR_PTR(-EAFNOSUPPORT);
 	}
 
-	read_unlock_bh(&rxrpc_local_lock);
+	mutex_lock(&rxrpc_local_mutex);
 
-	/* we didn't find one, so we need to create one */
-	local = rxrpc_alloc_local(srx);
-	if (!local) {
-		up_write(&rxrpc_local_sem);
-		return ERR_PTR(-ENOMEM);
+	obj = objcache_lookup_rcu(&rxrpc_local_cache, srx);
+	if (obj && objcache_get_maybe(obj)) {
+		local = container_of(obj, struct rxrpc_local, obj);
+		new = "old";
+	} else {
+		local = rxrpc_alloc_local(srx);
+		if (!local)
+			goto nomem;
+
+		ret = rxrpc_open_socket(local);
+		if (ret < 0)
+			goto sock_error;
+
+		obj = objcache_try_add(&rxrpc_local_cache, &local->obj,
+				       &local->srx);
+		BUG_ON(obj != &local->obj);
+		new = "new";
 	}
 
-	ret = rxrpc_create_local(local);
-	if (ret < 0) {
-		up_write(&rxrpc_local_sem);
-		kfree(local);
-		_leave(" = %d", ret);
-		return ERR_PTR(ret);
-	}
+	mutex_unlock(&rxrpc_local_mutex);
 
-	up_write(&rxrpc_local_sem);
-
-	_net("LOCAL new %d {%d,%u,%pI4+%hu}",
+	_net("LOCAL %s %d {%d,%u,%pI4+%hu}",
+	     new,
 	     local->debug_id,
 	     local->srx.transport_type,
 	     local->srx.transport.family,
@@ -203,114 +258,54 @@ struct rxrpc_local *rxrpc_lookup_local(struct sockaddr_rxrpc *srx)
 	_leave(" = %p [new]", local);
 	return local;
 
-found_local:
-	rxrpc_get_local(local);
-	read_unlock_bh(&rxrpc_local_lock);
-	up_write(&rxrpc_local_sem);
-
-	_net("LOCAL old %d {%d,%u,%pI4+%hu}",
-	     local->debug_id,
-	     local->srx.transport_type,
-	     local->srx.transport.family,
-	     &local->srx.transport.sin.sin_addr,
-	     ntohs(local->srx.transport.sin.sin_port));
-
-	_leave(" = %p [reuse]", local);
-	return local;
+nomem:
+	ret = -ENOMEM;
+sock_error:
+	mutex_unlock(&rxrpc_local_mutex);
+	kfree(local);
+	_leave(" = %d", ret);
+	return ERR_PTR(ret);
 }
 
 /*
- * release a local endpoint
+ * Prepare to garbage collect local endpoints.  Closing the socket cannot be
+ * done from an RCU callback context because it might sleep.
  */
-void rxrpc_put_local(struct rxrpc_local *local)
+static void rxrpc_local_prepare_for_gc(struct obj_node *obj)
 {
-	_enter("%p{u=%d}", local, atomic_read(&local->usage));
+	struct rxrpc_local *local = container_of(obj, struct rxrpc_local, obj);
+	struct socket *socket = local->socket;
 
-	ASSERTCMP(atomic_read(&local->usage), >, 0);
-
-	/* to prevent a race, the decrement and the dequeue must be effectively
-	 * atomic */
-	write_lock_bh(&rxrpc_local_lock);
-	if (unlikely(atomic_dec_and_test(&local->usage))) {
-		_debug("destroy local");
-		rxrpc_queue_work(&local->destroyer);
+	if (socket) {
+		local->socket = NULL;
+		kernel_sock_shutdown(socket, SHUT_RDWR);
+		socket->sk->sk_user_data = NULL;
+		sock_release(socket);
 	}
-	write_unlock_bh(&rxrpc_local_lock);
-	_leave("");
 }
 
 /*
- * destroy a local endpoint
+ * Destroy a local endpoint after the RCU grace period expires.
  */
-static void rxrpc_destroy_local(struct work_struct *work)
+static void rxrpc_local_gc_rcu(struct rcu_head *rcu)
 {
-	struct rxrpc_local *local =
-		container_of(work, struct rxrpc_local, destroyer);
+	struct rxrpc_local *local = container_of(rcu, struct rxrpc_local, obj.rcu);
 
-	_enter("%p{%d}", local, atomic_read(&local->usage));
-
-	down_write(&rxrpc_local_sem);
-
-	write_lock_bh(&rxrpc_local_lock);
-	if (atomic_read(&local->usage) > 0) {
-		write_unlock_bh(&rxrpc_local_lock);
-		up_read(&rxrpc_local_sem);
-		_leave(" [resurrected]");
-		return;
-	}
-
-	list_del(&local->link);
-	local->socket->sk->sk_user_data = NULL;
-	write_unlock_bh(&rxrpc_local_lock);
-
-	downgrade_write(&rxrpc_local_sem);
+	_enter("%p", local);
 
 	ASSERT(list_empty(&local->services));
 	ASSERT(!work_pending(&local->acceptor));
 	ASSERT(!work_pending(&local->rejecter));
-	ASSERT(!work_pending(&local->event_processor));
+	ASSERT(!work_pending(&local->processor));
 
 	/* finish cleaning up the local descriptor */
 	rxrpc_purge_queue(&local->accept_queue);
 	rxrpc_purge_queue(&local->reject_queue);
 	rxrpc_purge_queue(&local->event_queue);
-	kernel_sock_shutdown(local->socket, SHUT_RDWR);
-	sock_release(local->socket);
-
-	up_read(&rxrpc_local_sem);
 
 	_net("DESTROY LOCAL %d", local->debug_id);
 	kfree(local);
 
-	if (list_empty(&rxrpc_locals))
-		wake_up_all(&rxrpc_local_wq);
-
-	_leave("");
-}
-
-/*
- * preemptively destroy all local local endpoint rather than waiting for
- * them to be destroyed
- */
-void __exit rxrpc_destroy_all_locals(void)
-{
-	DECLARE_WAITQUEUE(myself,current);
-
-	_enter("");
-
-	/* we simply have to wait for them to go away */
-	if (!list_empty(&rxrpc_locals)) {
-		set_current_state(TASK_UNINTERRUPTIBLE);
-		add_wait_queue(&rxrpc_local_wq, &myself);
-
-		while (!list_empty(&rxrpc_locals)) {
-			schedule();
-			set_current_state(TASK_UNINTERRUPTIBLE);
-		}
-
-		remove_wait_queue(&rxrpc_local_wq, &myself);
-		set_current_state(TASK_RUNNING);
-	}
-
+	objcache_obj_rcu_done(&rxrpc_local_cache);
 	_leave("");
 }
