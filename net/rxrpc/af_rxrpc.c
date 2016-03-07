@@ -842,6 +842,8 @@ static int __init af_rxrpc_init(void)
 	proc_create("rxrpc_calls", 0, init_net.proc_net, &rxrpc_call_seq_fops);
 	proc_create("rxrpc_conns", 0, init_net.proc_net,
 		    &rxrpc_connection_seq_fops);
+	proc_create_data("rxrpc_locals", 0, init_net.proc_net,
+			 &objcache_seq_fops, &rxrpc_local_cache);
 #endif
 	return 0;
 
@@ -883,6 +885,7 @@ static void __exit af_rxrpc_exit(void)
 
 	_debug("flush scheduled work");
 	flush_workqueue(rxrpc_workqueue);
+	remove_proc_entry("rxrpc_locals", init_net.proc_net);
 	remove_proc_entry("rxrpc_conns", init_net.proc_net);
 	remove_proc_entry("rxrpc_calls", init_net.proc_net);
 	destroy_workqueue(rxrpc_workqueue);

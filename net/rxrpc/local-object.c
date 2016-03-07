@@ -19,6 +19,7 @@
 #include <net/af_rxrpc.h>
 #include "ar-internal.h"
 
+static int rxrpc_local_seq_show(struct seq_file *, void *);
 static void rxrpc_local_prepare_for_gc(struct obj_node *);
 static void rxrpc_local_gc_rcu(struct rcu_head *);
 static unsigned long rxrpc_local_hash_key(const void *);
@@ -29,6 +30,7 @@ static struct hlist_head rxrpc_local_cache_hash[16];
 
 struct objcache rxrpc_local_cache = {
 	.name		= "locals",
+	.seq_show	= rxrpc_local_seq_show,
 	.prepare_for_gc	= rxrpc_local_prepare_for_gc,
 	.gc_rcu		= rxrpc_local_gc_rcu,
 	.hash_key	= rxrpc_local_hash_key,
@@ -308,4 +310,31 @@ static void rxrpc_local_gc_rcu(struct rcu_head *rcu)
 
 	objcache_obj_rcu_done(&rxrpc_local_cache);
 	_leave("");
+}
+
+/*
+ * Display a local endpoint in /proc/net/rxrpc_locals.
+ */
+static int rxrpc_local_seq_show(struct seq_file *seq, void *v)
+{
+	struct rxrpc_local *local;
+
+	if (v == SEQ_START_TOKEN) {
+		seq_puts(seq, "Use Proto LPort Local\n");
+		return 0;
+	}
+
+	local = hlist_entry(v, struct rxrpc_local, obj.link);
+
+	switch (local->srx.transport.family) {
+	case AF_INET:
+		seq_printf(seq,
+			   "%3d UDP   %5hu %pI4\n",
+			   atomic_read(&local->obj.usage),
+			   ntohs(local->srx.transport.sin.sin_port),
+			   &local->srx.transport.sin.sin_addr);
+		break;
+	}
+
+	return 0;
 }
