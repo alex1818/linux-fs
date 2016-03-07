@@ -21,6 +21,7 @@
 #include <net/route.h>
 #include "ar-internal.h"
 
+static int rxrpc_peer_seq_show(struct seq_file *, void *);
 static unsigned long rxrpc_peer_hash_key(const void *);
 static int rxrpc_peer_cmp_key(const struct obj_node *, const void *);
 static void rxrpc_peer_gc_rcu(struct rcu_head *);
@@ -29,6 +30,7 @@ static struct hlist_head rxrpc_peer_cache_hash[256];
 
 struct objcache rxrpc_peer_cache = {
 	.name		= "peers",
+	.seq_show	= rxrpc_peer_seq_show,
 	.gc_rcu		= rxrpc_peer_gc_rcu,
 	.hash_key	= rxrpc_peer_hash_key,
 	.cmp_key	= rxrpc_peer_cmp_key,
@@ -260,4 +262,34 @@ struct rxrpc_peer *rxrpc_lookup_peer(struct sockaddr_rxrpc *srx, gfp_t gfp)
 
 	_leave(" = %p {u=%d}", peer, usage);
 	return peer;
+}
+
+/*
+ * Display a remote endpoint in /proc/net/rxrpc_peers.
+ */
+static int rxrpc_peer_seq_show(struct seq_file *seq, void *v)
+{
+	struct rxrpc_peer *peer;
+
+	if (v == SEQ_START_TOKEN) {
+		seq_puts(seq, "Use SvID Proto MTU   RTT   RPort Remote\n");
+		return 0;
+	}
+
+	peer = hlist_entry(v, struct rxrpc_peer, obj.link);
+
+	switch (peer->srx.transport.family) {
+	case AF_INET:
+		seq_printf(seq,
+			   "%3d %4x UDP   %5u %5lu %5hu %pI4\n",
+			   atomic_read(&peer->obj.usage),
+			   peer->srx.srx_service,
+			   peer->mtu,
+			   peer->rtt,
+			   ntohs(peer->srx.transport.sin.sin_port),
+			   &peer->srx.transport.sin.sin_addr);
+		break;
+	}
+
+	return 0;
 }
