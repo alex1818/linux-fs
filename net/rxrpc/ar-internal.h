@@ -681,7 +681,7 @@ static inline void rxrpc_put_local(struct rxrpc_local *local)
 /*
  * peer-event.c
  */
-void rxrpc_UDP_error_report(struct sock *);
+void rxrpc_error_report(struct sock *);
 void rxrpc_UDP_error_handler(struct work_struct *);
 
 /*
