@@ -20,7 +20,8 @@ af-rxrpc-y := \
 	local-event.o \
 	local-object.o \
 	objcache.o \
-	peer-object.o
+	peer-object.o \
+	utils.o
 
 af-rxrpc-$(CONFIG_PROC_FS) += ar-proc.o
 af-rxrpc-$(CONFIG_SYSCTL) += sysctl.o

@@ -196,11 +196,9 @@ struct rxrpc_local {
  * - holds the connection ID counter for connections between the two endpoints
  */
 struct rxrpc_peer {
-	struct work_struct	destroyer;	/* peer destroyer */
-	struct list_head	link;		/* link in master peer list */
+	struct obj_node		obj;
 	struct list_head	error_targets;	/* targets for net error distribution */
 	spinlock_t		lock;		/* access lock */
-	atomic_t		usage;
 	unsigned int		if_mtu;		/* interface MTU for this peer */
 	unsigned int		mtu;		/* network MTU for this peer */
 	unsigned int		maxdata;	/* data size (MTU - hdrsize) */
@@ -689,10 +687,25 @@ static inline void rxrpc_put_local(struct rxrpc_local *local)
 /*
  * peer-object.c
  */
-struct rxrpc_peer *rxrpc_get_peer(struct sockaddr_rxrpc *, gfp_t);
-void rxrpc_put_peer(struct rxrpc_peer *);
-struct rxrpc_peer *rxrpc_find_peer(struct rxrpc_local *, __be32, __be16);
-void __exit rxrpc_destroy_all_peers(void);
+extern struct objcache rxrpc_peer_cache;
+
+struct rxrpc_peer *rxrpc_lookup_peer_rcu(const struct sockaddr_rxrpc *);
+struct rxrpc_peer *rxrpc_lookup_peer(struct sockaddr_rxrpc *, gfp_t);
+
+static inline void rxrpc_get_peer(struct rxrpc_peer *peer)
+{
+	objcache_get(&peer->obj);
+}
+
+static inline bool rxrpc_get_peer_maybe(struct rxrpc_peer *peer)
+{
+	return objcache_get_maybe(&peer->obj);
+}
+
+static inline void rxrpc_put_peer(struct rxrpc_peer *peer)
+{
+	objcache_put(&rxrpc_peer_cache, &peer->obj);
+}
 
 /*
  * sysctl.c
@@ -704,6 +717,12 @@ extern void rxrpc_sysctl_exit(void);
 static inline int __init rxrpc_sysctl_init(void) { return 0; }
 static inline void rxrpc_sysctl_exit(void) {}
 #endif
+
+/*
+ * utils.c
+ */
+void rxrpc_get_addr_from_skb(struct rxrpc_local *, const struct sk_buff *,
+			     struct sockaddr_rxrpc *);
 
 /*
  * debug tracing
