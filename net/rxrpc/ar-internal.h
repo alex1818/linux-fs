@@ -598,11 +598,7 @@ void rxrpc_fast_process_packet(struct rxrpc_call *, struct sk_buff *);
 /*
  * ar-local.c
  */
-extern rwlock_t rxrpc_local_lock;
-
-struct rxrpc_local *rxrpc_lookup_local(struct sockaddr_rxrpc *);
-void rxrpc_put_local(struct rxrpc_local *);
-void __exit rxrpc_destroy_all_locals(void);
+extern void rxrpc_process_local_events(struct work_struct *);
 
 /*
  * ar-key.c
@@ -674,6 +670,15 @@ void rxrpc_put_transport(struct rxrpc_transport *);
 void __exit rxrpc_destroy_all_transports(void);
 struct rxrpc_transport *rxrpc_find_transport(struct rxrpc_local *,
 					     struct rxrpc_peer *);
+
+/*
+ * local-object.c
+ */
+extern rwlock_t rxrpc_local_lock;
+
+struct rxrpc_local *rxrpc_lookup_local(struct sockaddr_rxrpc *);
+void rxrpc_put_local(struct rxrpc_local *);
+void __exit rxrpc_destroy_all_locals(void);
 
 /*
  * sysctl.c
