@@ -579,12 +579,6 @@ void rxrpc_reject_packet(struct rxrpc_local *, struct sk_buff *);
 void rxrpc_reject_packets(struct work_struct *);
 
 /*
- * ar-error.c
- */
-void rxrpc_UDP_error_report(struct sock *);
-void rxrpc_UDP_error_handler(struct work_struct *);
-
-/*
  * ar-input.c
  */
 extern const char *rxrpc_pkts[];
@@ -683,6 +677,12 @@ static inline void rxrpc_put_local(struct rxrpc_local *local)
 {
 	objcache_put(&rxrpc_local_cache, &local->obj);
 }
+
+/*
+ * peer-event.c
+ */
+void rxrpc_UDP_error_report(struct sock *);
+void rxrpc_UDP_error_handler(struct work_struct *);
 
 /*
  * peer-object.c

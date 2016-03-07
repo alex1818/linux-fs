@@ -9,7 +9,6 @@ af-rxrpc-y := \
 	ar-call.o \
 	ar-connection.o \
 	ar-connevent.o \
-	ar-error.o \
 	ar-input.o \
 	ar-key.o \
 	ar-output.o \
@@ -20,6 +19,7 @@ af-rxrpc-y := \
 	local-event.o \
 	local-object.o \
 	objcache.o \
+	peer-event.o \
 	peer-object.o \
 	utils.o
 
