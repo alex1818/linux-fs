@@ -78,11 +78,6 @@ struct rxrpc_conn_bundle *rxrpc_get_bundle(struct rxrpc_sock *rx,
 	_enter("%p{%x},%x,%hx,",
 	       rx, key_serial(key), trans->debug_id, service_id);
 
-	if (rx->trans == trans && rx->bundle) {
-		atomic_inc(&rx->bundle->usage);
-		return rx->bundle;
-	}
-
 	/* search the extant bundles first for one that matches the specified
 	 * user ID */
 	spin_lock(&trans->client_lock);
@@ -136,10 +131,6 @@ struct rxrpc_conn_bundle *rxrpc_get_bundle(struct rxrpc_sock *rx,
 	rb_insert_color(&bundle->node, &trans->bundles);
 	spin_unlock(&trans->client_lock);
 	_net("BUNDLE new on trans %d", trans->debug_id);
-	if (!rx->bundle && rx->sk.sk_state == RXRPC_CLIENT_CONNECTED) {
-		atomic_inc(&bundle->usage);
-		rx->bundle = bundle;
-	}
 	_leave(" = %p [new]", bundle);
 	return bundle;
 
@@ -148,10 +139,6 @@ found_extant_bundle:
 	atomic_inc(&bundle->usage);
 	spin_unlock(&trans->client_lock);
 	_net("BUNDLE old on trans %d", trans->debug_id);
-	if (!rx->bundle && rx->sk.sk_state == RXRPC_CLIENT_CONNECTED) {
-		atomic_inc(&bundle->usage);
-		rx->bundle = bundle;
-	}
 	_leave(" = %p [extant %d]", bundle, atomic_read(&bundle->usage));
 	return bundle;
 
@@ -161,10 +148,6 @@ found_extant_second:
 	spin_unlock(&trans->client_lock);
 	kfree(candidate);
 	_net("BUNDLE old2 on trans %d", trans->debug_id);
-	if (!rx->bundle && rx->sk.sk_state == RXRPC_CLIENT_CONNECTED) {
-		atomic_inc(&bundle->usage);
-		rx->bundle = bundle;
-	}
 	_leave(" = %p [second %d]", bundle, atomic_read(&bundle->usage));
 	return bundle;
 }

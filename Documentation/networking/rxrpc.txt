@@ -216,12 +216,8 @@ Interaction with the user of the RxRPC socket:
      be used in all other sendmsgs or recvmsgs associated with that call.  The
      tag is carried in the control data.
 
- (*) connect() is used to supply a default destination address for a client
-     socket.  This may be overridden by supplying an alternate address to the
-     first sendmsg() of a call (struct msghdr::msg_name).
-
- (*) If connect() is called on an unbound client, a random local port will
-     bound before the operation takes place.
+ (*) connect() is not used.  The target address for a client call must be
+     supplied to the first sendmsg() of a call (struct msghdr::msg_name).
 
  (*) A server socket may also be used to make client calls.  To do this, the
      first sendmsg() of the call must specify the target address.  The server's
