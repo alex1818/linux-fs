@@ -31,15 +31,15 @@ static void rxrpc_abort_calls(struct rxrpc_connection *conn, int state,
 			      u32 abort_code)
 {
 	struct rxrpc_call *call;
-	struct rb_node *p;
+	int i;
 
 	_enter("{%d},%x", conn->debug_id, abort_code);
 
-	read_lock_bh(&conn->lock);
+	spin_lock(&conn->channel_lock);
 
-	for (p = rb_first(&conn->calls); p; p = rb_next(p)) {
-		call = rb_entry(p, struct rxrpc_call, conn_node);
-		write_lock(&call->state_lock);
+	for (i = 0; i < RXRPC_MAXCALLS; i++) {
+		call = conn->channels[i].call;
+		write_lock_bh(&call->state_lock);
 		if (call->state <= RXRPC_CALL_COMPLETE) {
 			call->state = state;
 			if (state == RXRPC_CALL_LOCALLY_ABORTED) {
@@ -51,10 +51,10 @@ static void rxrpc_abort_calls(struct rxrpc_connection *conn, int state,
 			}
 			rxrpc_queue_call(call);
 		}
-		write_unlock(&call->state_lock);
+		write_unlock_bh(&call->state_lock);
 	}
 
-	read_unlock_bh(&conn->lock);
+	spin_unlock(&conn->channel_lock);
 	_leave("");
 }
 
@@ -192,17 +192,17 @@ static int rxrpc_process_event(struct rxrpc_connection *conn,
 		if (ret < 0)
 			return ret;
 
-		read_lock_bh(&conn->lock);
+		spin_lock(&conn->channel_lock);
 		spin_lock(&conn->state_lock);
 
 		if (conn->state == RXRPC_CONN_SERVICE_CHALLENGING) {
 			conn->state = RXRPC_CONN_SERVICE;
 			for (loop = 0; loop < RXRPC_MAXCALLS; loop++)
-				rxrpc_call_is_secure(conn->channels[loop]);
+				rxrpc_call_is_secure(conn->channels[loop].call);
 		}
 
 		spin_unlock(&conn->state_lock);
-		read_unlock_bh(&conn->lock);
+		spin_unlock(&conn->channel_lock);
 		return 0;
 
 	default:

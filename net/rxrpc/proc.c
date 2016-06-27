@@ -136,7 +136,7 @@ static int rxrpc_connection_seq_show(struct seq_file *seq, void *v)
 	if (v == &rxrpc_connection_proc_list) {
 		seq_puts(seq,
 			 "Proto Local                  Remote                "
-			 " SvID ConnID   Calls    End Use State    Key     "
+			 " SvID ConnID   End Use State    Key     "
 			 " Serial   ISerial\n"
 			 );
 		return 0;
@@ -152,13 +152,12 @@ static int rxrpc_connection_seq_show(struct seq_file *seq, void *v)
 		&conn->proto.ipv4_addr, ntohs(conn->proto.port));
 
 	seq_printf(seq,
-		   "UDP   %-22.22s %-22.22s %4x %08x %08x %s %3u"
+		   "UDP   %-22.22s %-22.22s %4x %08x %s %3u"
 		   " %s %08x %08x %08x\n",
 		   lbuff,
 		   rbuff,
 		   conn->params.service_id,
 		   conn->proto.cid,
-		   conn->call_counter,
 		   rxrpc_conn_is_service(conn) ? "Svc" : "Clt",
 		   atomic_read(&conn->usage),
 		   rxrpc_conn_states[conn->state],
