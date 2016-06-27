@@ -27,7 +27,8 @@ unsigned int rxrpc_connection_expiry = 10 * 60;
 
 static void rxrpc_connection_reaper(struct work_struct *work);
 
-LIST_HEAD(rxrpc_connections);
+static LIST_HEAD(rxrpc_connections);
+LIST_HEAD(rxrpc_connection_proc_list);
 DEFINE_RWLOCK(rxrpc_connection_lock);
 static DECLARE_DELAYED_WORK(rxrpc_connection_reap, rxrpc_connection_reaper);
 
@@ -45,6 +46,7 @@ static struct rxrpc_connection *rxrpc_alloc_connection(gfp_t gfp)
 		spin_lock_init(&conn->channel_lock);
 		init_waitqueue_head(&conn->channel_wq);
 		INIT_WORK(&conn->processor, &rxrpc_process_connection);
+		INIT_LIST_HEAD(&conn->proc_link);
 		INIT_LIST_HEAD(&conn->link);
 		conn->calls = RB_ROOT;
 		skb_queue_head_init(&conn->rx_queue);
@@ -144,6 +146,7 @@ rxrpc_alloc_client_connection(struct rxrpc_conn_parameters *cp, gfp_t gfp)
 
 	write_lock(&rxrpc_connection_lock);
 	list_add_tail(&conn->link, &rxrpc_connections);
+	list_add_tail(&conn->proc_link, &rxrpc_connection_proc_list);
 	write_unlock(&rxrpc_connection_lock);
 
 	/* We steal the caller's peer ref. */
@@ -602,6 +605,7 @@ static void rxrpc_connection_reaper(struct work_struct *work)
 	struct rxrpc_connection *conn, *_p;
 	struct rxrpc_peer *peer;
 	unsigned long now, earliest, reap_time;
+	bool remove;
 
 	LIST_HEAD(graveyard);
 
@@ -619,6 +623,7 @@ static void rxrpc_connection_reaper(struct work_struct *work)
 		if (likely(atomic_read(&conn->usage) > 0))
 			continue;
 
+		remove = false;
 		if (rxrpc_conn_is_client(conn)) {
 			struct rxrpc_local *local = conn->params.local;
 			spin_lock(&local->client_conns_lock);
@@ -631,6 +636,7 @@ static void rxrpc_connection_reaper(struct work_struct *work)
 				rxrpc_put_client_connection_id(conn);
 				rb_erase(&conn->client_node,
 					 &local->client_conns);
+				remove = true;
 			} else if (reap_time < earliest) {
 				earliest = reap_time;
 			}
@@ -647,12 +653,16 @@ static void rxrpc_connection_reaper(struct work_struct *work)
 				list_move_tail(&conn->link, &graveyard);
 				rb_erase(&conn->service_node,
 					 &peer->service_conns);
+				remove = true;
 			} else if (reap_time < earliest) {
 				earliest = reap_time;
 			}
 
 			write_unlock_bh(&peer->conn_lock);
 		}
+
+		if (remove)
+			list_del_init(&conn->proc_link);
 	}
 	write_unlock(&rxrpc_connection_lock);
 
