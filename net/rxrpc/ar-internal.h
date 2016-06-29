@@ -609,7 +609,7 @@ static inline void rxrpc_queue_conn(struct rxrpc_connection *conn)
  * conn_service.c
  */
 struct rxrpc_connection *rxrpc_incoming_connection(struct rxrpc_local *,
-						   struct rxrpc_peer *,
+						   struct sockaddr_rxrpc *,
 						   struct sk_buff *);
 
 /*
@@ -775,6 +775,7 @@ static inline void rxrpc_sysctl_exit(void) {}
  */
 void rxrpc_get_addr_from_skb(struct rxrpc_local *, const struct sk_buff *,
 			     struct sockaddr_rxrpc *);
+int rxrpc_extract_addr_from_skb(struct sockaddr_rxrpc *, struct sk_buff *);
 
 /*
  * debug tracing
