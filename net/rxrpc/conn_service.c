@@ -16,17 +16,24 @@
  * get a record of an incoming connection
  */
 struct rxrpc_connection *rxrpc_incoming_connection(struct rxrpc_local *local,
-						   struct rxrpc_peer *peer,
+						   struct sockaddr_rxrpc *srx,
 						   struct sk_buff *skb)
 {
 	struct rxrpc_connection *conn, *candidate = NULL;
 	struct rxrpc_skb_priv *sp = rxrpc_skb(skb);
+	struct rxrpc_peer *peer;
 	struct rb_node *p, **pp;
 	const char *new = "old";
 	__be32 epoch;
 	u32 cid;
 
 	_enter("");
+
+	peer = rxrpc_lookup_peer(local, srx, GFP_NOIO);
+	if (!peer) {
+		_debug("no peer");
+		return ERR_PTR(-EBUSY);
+	}
 
 	ASSERT(sp->hdr.flags & RXRPC_CLIENT_INITIATED);
 
@@ -59,6 +66,7 @@ struct rxrpc_connection *rxrpc_incoming_connection(struct rxrpc_local *local,
 	 * redo the search */
 	candidate = rxrpc_alloc_connection(GFP_NOIO);
 	if (!candidate) {
+		rxrpc_put_peer(peer);
 		_leave(" = -ENOMEM");
 		return ERR_PTR(-ENOMEM);
 	}
@@ -115,6 +123,7 @@ struct rxrpc_connection *rxrpc_incoming_connection(struct rxrpc_local *local,
 success:
 	_net("CONNECTION %s %d {%x}", new, conn->debug_id, conn->proto.cid);
 
+	rxrpc_put_peer(peer);
 	_leave(" = %p {u=%d}", conn, atomic_read(&conn->usage));
 	return conn;
 
