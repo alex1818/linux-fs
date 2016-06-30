@@ -67,7 +67,8 @@ static int rxrpc_call_seq_show(struct seq_file *seq, void *v)
 	conn = call->conn;
 	if (conn)
 		sprintf(rbuff, "%pI4:%u",
-			&conn->proto.ipv4_addr, ntohs(conn->proto.port));
+			&conn->params.peer->srx.transport.sin.sin_addr,
+			ntohs(conn->params.peer->srx.transport.sin.sin_port));
 	else
 		strcpy(rbuff, "no_connection");
 
@@ -149,7 +150,8 @@ static int rxrpc_connection_seq_show(struct seq_file *seq, void *v)
 		ntohs(conn->params.local->srx.transport.sin.sin_port));
 
 	sprintf(rbuff, "%pI4:%u",
-		&conn->proto.ipv4_addr, ntohs(conn->proto.port));
+		&conn->params.peer->srx.transport.sin.sin_addr,
+		ntohs(conn->params.peer->srx.transport.sin.sin_port));
 
 	seq_printf(seq,
 		   "UDP   %-22.22s %-22.22s %4x %08x %s %3u"
