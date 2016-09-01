@@ -29,6 +29,7 @@ static const char *const rxrpc_conn_states[RXRPC_CONN__NR_STATES] = {
  * generate a list of extant and dead calls in /proc/net/rxrpc_calls
  */
 static void *rxrpc_call_seq_start(struct seq_file *seq, loff_t *_pos)
+	__acquires(&rxrpc_call_lock)
 {
 	read_lock(&rxrpc_call_lock);
 	return seq_list_start_head(&rxrpc_calls, *_pos);
@@ -40,6 +41,7 @@ static void *rxrpc_call_seq_next(struct seq_file *seq, void *v, loff_t *pos)
 }
 
 static void rxrpc_call_seq_stop(struct seq_file *seq, void *v)
+	__releases(&rxrpc_call_lock)
 {
 	read_unlock(&rxrpc_call_lock);
 }
@@ -56,7 +58,7 @@ static int rxrpc_call_seq_show(struct seq_file *seq, void *v)
 		seq_puts(seq,
 			 "Proto Local                  Remote                "
 			 " SvID ConnID   CallID   End Use State    Abort   "
-			 " UserID\n");
+			 " UserID Fl\n");
 		return 0;
 	}
 
@@ -85,7 +87,7 @@ static int rxrpc_call_seq_show(struct seq_file *seq, void *v)
 
 	seq_printf(seq,
 		   "UDP   %-22.22s %-22.22s %4x %08x %08x %s %3u"
-		   " %-8.8s %08x %lx\n",
+		   " %-8.8s %08x %lx %02lx\n",
 		   lbuff,
 		   rbuff,
 		   call->service_id,
@@ -95,7 +97,8 @@ static int rxrpc_call_seq_show(struct seq_file *seq, void *v)
 		   atomic_read(&call->usage),
 		   rxrpc_call_states[call->state],
 		   call->abort_code,
-		   call->user_call_ID);
+		   call->user_call_ID,
+		   call->flags);
 
 	return 0;
 }
@@ -124,6 +127,7 @@ const struct file_operations rxrpc_call_seq_fops = {
  * generate a list of extant virtual connections in /proc/net/rxrpc_conns
  */
 static void *rxrpc_connection_seq_start(struct seq_file *seq, loff_t *_pos)
+	__acquires(&rxrpc_connection_lock)
 {
 	read_lock(&rxrpc_connection_lock);
 	return seq_list_start_head(&rxrpc_connection_proc_list, *_pos);
@@ -136,6 +140,7 @@ static void *rxrpc_connection_seq_next(struct seq_file *seq, void *v,
 }
 
 static void rxrpc_connection_seq_stop(struct seq_file *seq, void *v)
+	__releases(&rxrpc_connection_lock)
 {
 	read_unlock(&rxrpc_connection_lock);
 }

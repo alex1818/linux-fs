@@ -155,15 +155,15 @@ static int rxrpc_bind(struct socket *sock, struct sockaddr *saddr, int len)
 	}
 
 	if (rx->srx.srx_service) {
-		write_lock_bh(&local->services_lock);
-		list_for_each_entry(prx, &local->services, listen_link) {
+		write_lock(&local->services_lock);
+		hlist_for_each_entry(prx, &local->services, listen_link) {
 			if (prx->srx.srx_service == rx->srx.srx_service)
 				goto service_in_use;
 		}
 
 		rx->local = local;
-		list_add_tail(&rx->listen_link, &local->services);
-		write_unlock_bh(&local->services_lock);
+		hlist_add_head_rcu(&rx->listen_link, &local->services);
+		write_unlock(&local->services_lock);
 
 		rx->sk.sk_state = RXRPC_SERVER_BOUND;
 	} else {
@@ -176,7 +176,7 @@ static int rxrpc_bind(struct socket *sock, struct sockaddr *saddr, int len)
 	return 0;
 
 service_in_use:
-	write_unlock_bh(&local->services_lock);
+	write_unlock(&local->services_lock);
 	rxrpc_put_local(local);
 	ret = -EADDRINUSE;
 error_unlock:
@@ -297,9 +297,10 @@ EXPORT_SYMBOL(rxrpc_kernel_begin_call);
  */
 void rxrpc_kernel_end_call(struct socket *sock, struct rxrpc_call *call)
 {
+	struct rxrpc_sock *rx = rxrpc_sk(sock->sk);
+
 	_enter("%d{%d}", call->debug_id, atomic_read(&call->usage));
-	rxrpc_remove_user_ID(rxrpc_sk(sock->sk), call);
-	rxrpc_purge_queue(&call->knlrecv_queue);
+	rxrpc_release_call(rx, call);
 	rxrpc_put_call(call);
 }
 EXPORT_SYMBOL(rxrpc_kernel_end_call);
@@ -516,15 +517,16 @@ error:
 static unsigned int rxrpc_poll(struct file *file, struct socket *sock,
 			       poll_table *wait)
 {
-	unsigned int mask;
 	struct sock *sk = sock->sk;
+	struct rxrpc_sock *rx = rxrpc_sk(sk);
+	unsigned int mask;
 
 	sock_poll_wait(file, sk_sleep(sk), wait);
 	mask = 0;
 
 	/* the socket is readable if there are any messages waiting on the Rx
 	 * queue */
-	if (!skb_queue_empty(&sk->sk_receive_queue))
+	if (!list_empty(&rx->recvmsg_q))
 		mask |= POLLIN | POLLRDNORM;
 
 	/* the socket is writable if there is space to add new data to the
@@ -565,6 +567,7 @@ static int rxrpc_create(struct net *net, struct socket *sock, int protocol,
 		return -ENOMEM;
 
 	sock_init_data(sock, sk);
+	sock_set_flag(sk, SOCK_RCU_FREE);
 	sk->sk_state		= RXRPC_UNBOUND;
 	sk->sk_write_space	= rxrpc_write_space;
 	sk->sk_max_ack_backlog	= 0;
@@ -574,14 +577,50 @@ static int rxrpc_create(struct net *net, struct socket *sock, int protocol,
 	rx->family = protocol;
 	rx->calls = RB_ROOT;
 
-	INIT_LIST_HEAD(&rx->listen_link);
-	INIT_LIST_HEAD(&rx->secureq);
-	INIT_LIST_HEAD(&rx->acceptq);
+	spin_lock_init(&rx->incoming_lock);
+	INIT_HLIST_NODE(&rx->listen_link);
+	INIT_LIST_HEAD(&rx->sock_calls);
+	INIT_LIST_HEAD(&rx->to_be_accepted);
+	INIT_LIST_HEAD(&rx->recvmsg_q);
+	rwlock_init(&rx->recvmsg_lock);
 	rwlock_init(&rx->call_lock);
 	memset(&rx->srx, 0, sizeof(rx->srx));
 
 	_leave(" = 0 [%p]", rx);
 	return 0;
+}
+
+/*
+ * Kill all the calls on a socket and shut it down.
+ */
+static int rxrpc_shutdown(struct socket *sock, int flags)
+{
+	struct sock *sk = sock->sk;
+	struct rxrpc_sock *rx = rxrpc_sk(sk);
+	int ret = 0;
+
+	_enter("%p,%d", sk, flags);
+
+	if (flags != SHUT_RDWR)
+		return -EOPNOTSUPP;
+	if (sk->sk_state == RXRPC_CLOSE)
+		return -ESHUTDOWN;
+
+	lock_sock(sk);
+
+	spin_lock_bh(&sk->sk_receive_queue.lock);
+	if (sk->sk_state < RXRPC_CLOSE) {
+		sk->sk_state = RXRPC_CLOSE;
+		sk->sk_shutdown = SHUTDOWN_MASK;
+	} else {
+		ret = -ESHUTDOWN;
+	}
+	spin_unlock_bh(&sk->sk_receive_queue.lock);
+
+	rxrpc_discard_prealloc(rx);
+
+	release_sock(sk);
+	return ret;
 }
 
 /*
@@ -622,10 +661,10 @@ static int rxrpc_release_sock(struct sock *sk)
 
 	ASSERTCMP(rx->listen_link.next, !=, LIST_POISON1);
 
-	if (!list_empty(&rx->listen_link)) {
-		write_lock_bh(&rx->local->services_lock);
-		list_del(&rx->listen_link);
-		write_unlock_bh(&rx->local->services_lock);
+	if (!hlist_unhashed(&rx->listen_link)) {
+		write_lock(&rx->local->services_lock);
+		hlist_del_rcu(&rx->listen_link);
+		write_unlock(&rx->local->services_lock);
 	}
 
 	/* try to flush out this socket */
@@ -678,7 +717,7 @@ static const struct proto_ops rxrpc_rpc_ops = {
 	.poll		= rxrpc_poll,
 	.ioctl		= sock_no_ioctl,
 	.listen		= rxrpc_listen,
-	.shutdown	= sock_no_shutdown,
+	.shutdown	= rxrpc_shutdown,
 	.setsockopt	= rxrpc_setsockopt,
 	.getsockopt	= sock_no_getsockopt,
 	.sendmsg	= rxrpc_sendmsg,
