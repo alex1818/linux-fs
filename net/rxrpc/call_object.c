@@ -524,7 +524,7 @@ void rxrpc_release_call(struct rxrpc_call *call)
 	if (call->state < RXRPC_CALL_COMPLETE &&
 	    call->state != RXRPC_CALL_CLIENT_FINAL_ACK) {
 		_debug("+++ ABORTING STATE %d +++\n", call->state);
-		__rxrpc_abort_call(call, RX_CALL_DEAD, ECONNRESET);
+		__rxrpc_abort_call("SKT", call, 0, RX_CALL_DEAD, ECONNRESET);
 	}
 	write_unlock_bh(&call->state_lock);
 
@@ -589,7 +589,8 @@ static void rxrpc_mark_call_released(struct rxrpc_call *call)
 	rxrpc_see_call(call);
 	write_lock(&call->state_lock);
 	if (call->state < RXRPC_CALL_DEAD) {
-		sched = __rxrpc_abort_call(call, RX_CALL_DEAD, ECONNRESET);
+		sched = __rxrpc_abort_call("SKT", call, 0,
+					   RX_CALL_DEAD, ECONNRESET);
 		if (!test_and_set_bit(RXRPC_CALL_EV_RELEASE, &call->events))
 			sched = true;
 	}
