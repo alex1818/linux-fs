@@ -36,6 +36,7 @@ const char *const rxrpc_call_states[NR__RXRPC_CALL_STATES] = {
 	[RXRPC_CALL_CLIENT_AWAIT_REPLY]		= "ClAwtRpl",
 	[RXRPC_CALL_CLIENT_RECV_REPLY]		= "ClRcvRpl",
 	[RXRPC_CALL_CLIENT_FINAL_ACK]		= "ClFnlACK",
+	[RXRPC_CALL_SERVER_PREALLOC]		= "SvPrealc",
 	[RXRPC_CALL_SERVER_SECURING]		= "SvSecure",
 	[RXRPC_CALL_SERVER_ACCEPTING]		= "SvAccept",
 	[RXRPC_CALL_SERVER_RECV_REQUEST]	= "SvRcvReq",
@@ -105,7 +106,7 @@ found_extant_call:
 /*
  * allocate a new call
  */
-static struct rxrpc_call *rxrpc_alloc_call(gfp_t gfp)
+struct rxrpc_call *rxrpc_alloc_call(gfp_t gfp)
 {
 	struct rxrpc_call *call;
 
@@ -688,7 +689,7 @@ static void rxrpc_rcu_destroy_call(struct rcu_head *rcu)
 /*
  * clean up a call
  */
-static void rxrpc_cleanup_call(struct rxrpc_call *call)
+void rxrpc_cleanup_call(struct rxrpc_call *call)
 {
 	_net("DESTROY CALL %d", call->debug_id);
 
