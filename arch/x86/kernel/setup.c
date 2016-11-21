@@ -69,6 +69,7 @@
 #include <linux/crash_dump.h>
 #include <linux/tboot.h>
 #include <linux/jiffies.h>
+#include <linux/security.h>
 
 #include <video/edid.h>
 
@@ -1154,6 +1155,8 @@ void __init setup_arch(char **cmdline_p)
 
 	if (IS_ENABLED(CONFIG_EFI) && boot_params.secure_boot) {
 		set_bit(EFI_SECURE_BOOT, &efi.flags);
+		if (IS_ENABLED(CONFIG_EFI_SECURE_BOOT_LOCK_DOWN))
+			lock_kernel_down();
 		pr_info("Secure boot enabled\n");
 	}
 
