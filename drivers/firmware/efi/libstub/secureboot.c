@@ -23,6 +23,12 @@ static const efi_char16_t const efi_SetupMode_name[] = {
 	'S', 'e', 't', 'u', 'p', 'M', 'o', 'd', 'e', 0
 };
 
+/* SHIM variables */
+static const efi_guid_t shim_guid = EFI_SHIM_LOCK_GUID;
+static efi_char16_t const shim_MokSBState_name[] = {
+	'M', 'o', 'k', 'S', 'B', 'S', 't', 'a', 't', 'e', 0
+};
+
 #define get_efi_var(name, vendor, ...) \
 	efi_call_runtime(get_variable, \
 			 (efi_char16_t *)(name), (efi_guid_t *)(vendor), \
@@ -33,7 +39,8 @@ static const efi_char16_t const efi_SetupMode_name[] = {
  */
 int efi_get_secureboot(efi_system_table_t *sys_table_arg)
 {
-	u8 val;
+	u32 attr;
+	u8 val, moksbstate;
 	unsigned long size = sizeof(val);
 	efi_status_t status;
 
@@ -53,6 +60,21 @@ int efi_get_secureboot(efi_system_table_t *sys_table_arg)
 		goto out_efi_err;
 
 	if (val == 1)
+		return 0;
+
+	/* See if a user has put shim into insecure mode.  If so, and if the
+	 * variable doesn't have the runtime attribute set, we might as well
+	 * honor that.
+	 */
+	size = sizeof(moksbstate);
+	status = get_efi_var(shim_MokSBState_name, &shim_guid,
+			     &attr, &size, &moksbstate);
+
+	/* If it fails, we don't care why.  Default to secure */
+	if (status != EFI_SUCCESS)
+		return 1;
+
+	if (!(attr & EFI_VARIABLE_RUNTIME_ACCESS) && moksbstate == 1)
 		return 0;
 
 	return 1;
