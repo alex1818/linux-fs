@@ -20,52 +20,6 @@
 
 bool __nokaslr;
 
-static int efi_get_secureboot(efi_system_table_t *sys_table_arg)
-{
-	static efi_char16_t const sb_var_name[] = {
-		'S', 'e', 'c', 'u', 'r', 'e', 'B', 'o', 'o', 't', 0 };
-	static efi_char16_t const sm_var_name[] = {
-		'S', 'e', 't', 'u', 'p', 'M', 'o', 'd', 'e', 0 };
-
-	efi_guid_t var_guid = EFI_GLOBAL_VARIABLE_GUID;
-	efi_get_variable_t *f_getvar = sys_table_arg->runtime->get_variable;
-	u8 val;
-	unsigned long size = sizeof(val);
-	efi_status_t status;
-
-	status = f_getvar((efi_char16_t *)sb_var_name, (efi_guid_t *)&var_guid,
-			  NULL, &size, &val);
-
-	if (status != EFI_SUCCESS)
-		goto out_efi_err;
-
-	if (val == 0)
-		return 0;
-
-	status = f_getvar((efi_char16_t *)sm_var_name, (efi_guid_t *)&var_guid,
-			  NULL, &size, &val);
-
-	if (status != EFI_SUCCESS)
-		goto out_efi_err;
-
-	if (val == 1)
-		return 0;
-
-	return 1;
-
-out_efi_err:
-	switch (status) {
-	case EFI_NOT_FOUND:
-		return 0;
-	case EFI_DEVICE_ERROR:
-		return -EIO;
-	case EFI_SECURITY_VIOLATION:
-		return -EACCES;
-	default:
-		return -EINVAL;
-	}
-}
-
 efi_status_t efi_open_volume(efi_system_table_t *sys_table_arg,
 			     void *__image, void **__fh)
 {
