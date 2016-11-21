@@ -1152,6 +1152,11 @@ void __init setup_arch(char **cmdline_p)
 	/* Allocate bigger log buffer */
 	setup_log_buf(1);
 
+	if (IS_ENABLED(CONFIG_EFI) && boot_params.secure_boot) {
+		set_bit(EFI_SECURE_BOOT, &efi.flags);
+		pr_info("Secure boot enabled\n");
+	}
+
 	reserve_initrd();
 
 	acpi_table_upgrade();
