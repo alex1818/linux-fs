@@ -38,9 +38,10 @@ static void sanitize_boot_params(struct boot_params *boot_params)
 		memset(&boot_params->ext_ramdisk_image, 0,
 		       (char *)&boot_params->efi_info -
 			(char *)&boot_params->ext_ramdisk_image);
-		memset(&boot_params->kbd_status, 0,
+		boot_params->kbd_status = 0;
+		memset(&boot_params->_pad5, 0,
 		       (char *)&boot_params->hdr -
-		       (char *)&boot_params->kbd_status);
+		       (char *)&boot_params->_pad5);
 		memset(&boot_params->_pad7[0], 0,
 		       (char *)&boot_params->edd_mbr_sig_buffer[0] -
 			(char *)&boot_params->_pad7[0]);

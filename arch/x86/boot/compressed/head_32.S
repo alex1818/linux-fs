@@ -61,6 +61,7 @@
 
 	__HEAD
 ENTRY(startup_32)
+	movb	$0, BP_secure_boot(%esi)
 #ifdef CONFIG_EFI_STUB
 	jmp	preferred_addr
 

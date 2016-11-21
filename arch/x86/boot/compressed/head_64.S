@@ -244,6 +244,7 @@ ENTRY(startup_64)
 	 * that maps our entire kernel(text+data+bss+brk), zero page
 	 * and command line.
 	 */
+	movb	$0, BP_secure_boot(%rsi)
 #ifdef CONFIG_EFI_STUB
 	/*
 	 * The entry point for the PE/COFF executable is efi_pe_entry, so

@@ -1158,6 +1158,8 @@ struct boot_params *efi_main(struct efi_config *c,
 	else
 		setup_boot_services32(efi_early);
 
+	boot_params->secure_boot = efi_get_secureboot(sys_table);
+
 	setup_graphics(boot_params);
 
 	setup_efi_pci(boot_params);
