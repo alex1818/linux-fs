@@ -318,6 +318,11 @@ MODULE_DEVICE_TABLE(x86cpu, ss_smi_ids);
  */
 static int __init speedstep_init(void)
 {
+	if (smi_port != 0 && kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
+
 	if (!x86_match_cpu(ss_smi_ids))
 		return -ENODEV;
 
