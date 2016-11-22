@@ -2363,6 +2363,12 @@ static int __init rp_init(void)
 {
 	int ret = -ENOMEM, pci_boards_found, isa_boards_found, i;
 
+	if ((board1 || board2 || board3 || board4 || controller) &&
+	    kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
+
 	printk(KERN_INFO "RocketPort device driver module, version %s, %s\n",
 	       ROCKET_VERSION, ROCKET_DATE);
 

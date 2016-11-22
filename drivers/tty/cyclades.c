@@ -153,11 +153,12 @@ static unsigned int cy_isa_addresses[] = {
 
 #define NR_ISA_ADDRS ARRAY_SIZE(cy_isa_addresses)
 
+static unsigned int nr_maddr, nr_irq;
 static long maddr[NR_CARDS];
 static int irq[NR_CARDS];
 
-module_param_array(maddr, long, NULL, 0);
-module_param_array(irq, int, NULL, 0);
+module_param_array(maddr, long, &nr_maddr, 0);
+module_param_array(irq, int, &nr_irq, 0);
 
 #endif				/* CONFIG_ISA */
 
@@ -4037,6 +4038,13 @@ static int __init cy_init(void)
 {
 	unsigned int nboards;
 	int retval = -ENOMEM;
+
+#ifdef CONFIG_ISA
+	if ((nr_maddr > 0 || nr_irq > 0) && kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
+#endif
 
 	cy_serial_driver = alloc_tty_driver(NR_PORTS);
 	if (!cy_serial_driver)

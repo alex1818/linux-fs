@@ -165,6 +165,7 @@ static unsigned int moxaLowWaterChk;
 static DEFINE_MUTEX(moxa_openlock);
 static DEFINE_SPINLOCK(moxa_lock);
 
+static unsigned int nr_baseaddr, nr_numports;
 static unsigned long baseaddr[MAX_BOARDS];
 static unsigned int type[MAX_BOARDS];
 static unsigned int numports[MAX_BOARDS];
@@ -179,9 +180,9 @@ MODULE_FIRMWARE("c320tunx.cod");
 
 module_param_array(type, uint, NULL, 0);
 MODULE_PARM_DESC(type, "card type: C218=2, C320=4");
-module_param_array(baseaddr, ulong, NULL, 0);
+module_param_array(baseaddr, ulong, &nr_baseaddr, 0);
 MODULE_PARM_DESC(baseaddr, "base address");
-module_param_array(numports, uint, NULL, 0);
+module_param_array(numports, uint, &nr_numports, 0);
 MODULE_PARM_DESC(numports, "numports (ignored for C218)");
 
 module_param(ttymajor, int, 0);
@@ -1038,6 +1039,11 @@ static int __init moxa_init(void)
 	int retval = 0;
 	struct moxa_board_conf *brd = moxa_boards;
 	unsigned int i;
+
+	if ((nr_baseaddr > 0 || nr_numports > 0) && kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
 
 	printk(KERN_INFO "MOXA Intellio family driver version %s\n",
 			MOXA_VERSION);

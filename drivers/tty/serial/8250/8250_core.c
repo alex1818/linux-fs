@@ -645,6 +645,11 @@ static int univ8250_console_match(struct console *co, char *name, int idx,
 	if (strncmp(name, match, 4) != 0)
 		return -ENODEV;
 
+	if (kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
+
 	if (uart_parse_earlycon(options, &iotype, &addr, &options))
 		return -ENODEV;
 

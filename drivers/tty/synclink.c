@@ -859,6 +859,7 @@ static int ttymajor;
 /*
  * Array of user specified options for ISA adapters.
  */
+static unsigned int nr_io, nr_irq, nr_dma;
 static int io[MAX_ISA_DEVICES];
 static int irq[MAX_ISA_DEVICES];
 static int dma[MAX_ISA_DEVICES];
@@ -869,9 +870,9 @@ static int txholdbufs[MAX_TOTAL_DEVICES];
 	
 module_param(break_on_load, bool, 0);
 module_param(ttymajor, int, 0);
-module_param_array(io, int, NULL, 0);
-module_param_array(irq, int, NULL, 0);
-module_param_array(dma, int, NULL, 0);
+module_param_array(io, int, &nr_io, 0);
+module_param_array(irq, int, &nr_irq, 0);
+module_param_array(dma, int, &nr_dma, 0);
 module_param(debug_level, int, 0);
 module_param_array(maxframe, int, NULL, 0);
 module_param_array(txdmabufs, int, NULL, 0);
@@ -4415,6 +4416,11 @@ static int __init synclink_init(void)
 	if (break_on_load) {
 	 	mgsl_get_text_ptr();
   		BREAKPOINT();
+	}
+
+	if ((nr_io > 0 || nr_irq > 0 || nr_dma > 0) && kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
 	}
 
  	printk("%s %s\n", driver_name, driver_version);
