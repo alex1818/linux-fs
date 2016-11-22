@@ -153,6 +153,12 @@ static int __init mk712_init(void)
 {
 	int err;
 
+	if ((mk712_io != 0x260  || mk712_irq != 10) &&
+	    kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
+
 	if (!request_region(mk712_io, 8, "mk712")) {
 		printk(KERN_WARNING "mk712: unable to get IO region\n");
 		return -ENODEV;

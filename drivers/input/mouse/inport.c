@@ -132,6 +132,11 @@ static int __init inport_init(void)
 	unsigned char a, b, c;
 	int err;
 
+	if (inport_irq != INPORT_IRQ && kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
+
 	if (!request_region(INPORT_BASE, INPORT_EXTENT, "inport")) {
 		printk(KERN_ERR "inport.c: Can't allocate ports at %#x\n", INPORT_BASE);
 		return -EBUSY;
