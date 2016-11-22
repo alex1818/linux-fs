@@ -512,11 +512,12 @@ static char *t1isa_procinfo(struct capi_ctr *ctrl)
 
 #define MAX_CARDS 4
 static struct pci_dev isa_dev[MAX_CARDS];
+static unsigned int nr_io;
 static int io[MAX_CARDS];
 static int irq[MAX_CARDS];
 static int cardnr[MAX_CARDS];
 
-module_param_array(io, int, NULL, 0);
+module_param_array(io, int, &nr_io, 0);
 module_param_array(irq, int, NULL, 0);
 module_param_array(cardnr, int, NULL, 0);
 MODULE_PARM_DESC(io, "I/O base address(es)");
@@ -551,6 +552,11 @@ static int __init t1isa_init(void)
 	char rev[32];
 	char *p;
 	int i;
+
+	if (nr_io > 0 && kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
 
 	if ((p = strchr(revision, ':')) != NULL && p[1]) {
 		strlcpy(rev, p + 2, 32);

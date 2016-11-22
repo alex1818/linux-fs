@@ -328,6 +328,7 @@ static char *HiSax_id = HiSaxID;
 /* Variables for insmod */
 static int type[HISAX_MAX_CARDS] = { 0, };
 static int protocol[HISAX_MAX_CARDS] = { 0, };
+static int nr_io;
 static int io[HISAX_MAX_CARDS] = { 0, };
 #undef IO0_IO1
 #ifdef CONFIG_HISAX_16_3
@@ -338,10 +339,12 @@ static int io[HISAX_MAX_CARDS] = { 0, };
 #define IO0_IO1
 #endif
 #ifdef IO0_IO1
+static int nr_io0, nr_io1;
 static int io0[HISAX_MAX_CARDS] = { 0, };
 static int io1[HISAX_MAX_CARDS] = { 0, };
 #endif
 static int irq[HISAX_MAX_CARDS] = { 0, };
+static int nr_mem;
 static int mem[HISAX_MAX_CARDS] = { 0, };
 static char *id = HiSaxID;
 
@@ -350,13 +353,13 @@ MODULE_AUTHOR("Karsten Keil");
 MODULE_LICENSE("GPL");
 module_param_array(type, int, NULL, 0);
 module_param_array(protocol, int, NULL, 0);
-module_param_array(io, int, NULL, 0);
+module_param_array(io, int, &nr_io, 0);
 module_param_array(irq, int, NULL, 0);
-module_param_array(mem, int, NULL, 0);
+module_param_array(mem, int, &nr_mem, 0);
 module_param(id, charp, 0);
 #ifdef IO0_IO1
-module_param_array(io0, int, NULL, 0);
-module_param_array(io1, int, NULL, 0);
+module_param_array(io0, int, &nr_io0, 0);
+module_param_array(io1, int, &nr_io1, 0);
 #endif
 #endif /* MODULE */
 
@@ -1336,6 +1339,17 @@ static int __init HiSax_init(void)
 #ifdef MODULE
 	int j;
 	int nzproto = 0;
+#endif
+
+#ifdef MODULE
+	if ((nr_io > 0 || nr_mem > 0
+#ifdef IO0_IO1
+	     || nr_io0 > 0 || nr_io1 > 0
+#endif
+	     ) && kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
 #endif
 
 	HiSaxVersion();
