@@ -145,6 +145,11 @@ static int __init cpcihp_generic_init(void)
 	struct resource *r;
 	struct pci_dev *dev;
 
+	if (port && kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
+
 	info(DRIVER_DESC " version: " DRIVER_VERSION);
 	status = validate_parameters();
 	if (status)
