@@ -757,6 +757,11 @@ static void ramoops_register_dummy(void)
 
 static int __init ramoops_init(void)
 {
+	if ((mem_address || mem_size) && kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
+
 	ramoops_register_dummy();
 	return platform_driver_register(&ramoops_driver);
 }
