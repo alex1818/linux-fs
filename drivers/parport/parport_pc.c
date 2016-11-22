@@ -3149,14 +3149,15 @@ static int __init parport_init_mode_setup(char *str)
 static char *irq[PARPORT_PC_MAX_PORTS];
 static char *dma[PARPORT_PC_MAX_PORTS];
 
+static unsigned int nr_io, nr_io_hi, nr_irq, nr_dma;
 MODULE_PARM_DESC(io, "Base I/O address (SPP regs)");
-module_param_array(io, int, NULL, 0);
+module_param_array(io, int, &nr_io, 0);
 MODULE_PARM_DESC(io_hi, "Base I/O address (ECR)");
-module_param_array(io_hi, int, NULL, 0);
+module_param_array(io_hi, int, &nr_io_hi, 0);
 MODULE_PARM_DESC(irq, "IRQ line");
-module_param_array(irq, charp, NULL, 0);
+module_param_array(irq, charp, &nr_irq, 0);
 MODULE_PARM_DESC(dma, "DMA channel");
-module_param_array(dma, charp, NULL, 0);
+module_param_array(dma, charp, &nr_dma, 0);
 #if defined(CONFIG_PARPORT_PC_SUPERIO) || \
        (defined(CONFIG_PARPORT_1284) && defined(CONFIG_PARPORT_PC_FIFO))
 MODULE_PARM_DESC(verbose_probing, "Log chit-chat during initialisation");
@@ -3173,6 +3174,12 @@ static int __init parse_parport_params(void)
 {
 	unsigned int i;
 	int val;
+
+	if ((nr_io > 0 || nr_io_hi > 0 || nr_irq > 0 || nr_dma > 0) &&
+	    kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
 
 #ifdef CONFIG_PCI
 	if (init_mode)
