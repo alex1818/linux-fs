@@ -124,9 +124,11 @@ static int index[SNDRV_CARDS] = SNDRV_DEFAULT_IDX;
 static char *id[SNDRV_CARDS] = SNDRV_DEFAULT_STR;
 static bool enable[SNDRV_CARDS] = SNDRV_DEFAULT_ENABLE;
 
+static unsigned int nr_joystick_port;
 #ifdef SUPPORT_JOYSTICK
 static int joystick_port[SNDRV_CARDS] = { [0 ... (SNDRV_CARDS - 1)] = 0x200 };
 #endif
+static unsigned int nr_mpu_port, nr_opl3_port;
 static int mpu_port[SNDRV_CARDS] = { [0 ... (SNDRV_CARDS - 1)] = 0x330 };
 static int opl3_port[SNDRV_CARDS] = { [0 ... (SNDRV_CARDS - 1)] = 0x388 };
 
@@ -137,12 +139,12 @@ MODULE_PARM_DESC(id, "ID string for Riptide soundcard.");
 module_param_array(enable, bool, NULL, 0444);
 MODULE_PARM_DESC(enable, "Enable Riptide soundcard.");
 #ifdef SUPPORT_JOYSTICK
-module_param_array(joystick_port, int, NULL, 0444);
+module_param_array(joystick_port, int, &nr_joystick_port, 0444);
 MODULE_PARM_DESC(joystick_port, "Joystick port # for Riptide soundcard.");
 #endif
-module_param_array(mpu_port, int, NULL, 0444);
+module_param_array(mpu_port, int, &nr_mpu_port, 0444);
 MODULE_PARM_DESC(mpu_port, "MPU401 port # for Riptide driver.");
-module_param_array(opl3_port, int, NULL, 0444);
+module_param_array(opl3_port, int, &nr_opl3_port, 0444);
 MODULE_PARM_DESC(opl3_port, "OPL3 port # for Riptide driver.");
 
 /*
@@ -2193,6 +2195,17 @@ static struct pci_driver joystick_driver = {
 static int __init alsa_card_riptide_init(void)
 {
 	int err;
+
+	if ((
+#ifdef SUPPORT_JOYSTICK
+		    nr_joystick_port > 0 ||
+#endif
+		    nr_mpu_port > 0 || nr_opl3_port > 0) &&
+	    kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
+
 	err = pci_register_driver(&driver);
 	if (err < 0)
 		return err;

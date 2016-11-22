@@ -1539,4 +1539,6 @@ static struct pci_driver sonicvibes_driver = {
 	.remove = snd_sonic_remove,
 };
 
+#undef module_lockdown_check
+#define module_lockdown_check() (dmaio != 0x7a00)
 module_pci_driver(sonicvibes_driver);

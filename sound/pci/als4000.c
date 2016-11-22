@@ -88,6 +88,7 @@ MODULE_SUPPORTED_DEVICE("{{Avance Logic,ALS4000}}");
 #define SUPPORT_JOYSTICK 1
 #endif
 
+static unsigned int nr_joystick_port;
 static int index[SNDRV_CARDS] = SNDRV_DEFAULT_IDX;	/* Index 0-MAX */
 static char *id[SNDRV_CARDS] = SNDRV_DEFAULT_STR;	/* ID for this card */
 static bool enable[SNDRV_CARDS] = SNDRV_DEFAULT_ENABLE_PNP;	/* Enable this card */
@@ -102,7 +103,7 @@ MODULE_PARM_DESC(id, "ID string for ALS4000 soundcard.");
 module_param_array(enable, bool, NULL, 0444);
 MODULE_PARM_DESC(enable, "Enable ALS4000 soundcard.");
 #ifdef SUPPORT_JOYSTICK
-module_param_array(joystick_port, int, NULL, 0444);
+module_param_array(joystick_port, int, &nr_joystick_port, 0444);
 MODULE_PARM_DESC(joystick_port, "Joystick port address for ALS4000 soundcard. (0 = disabled)");
 #endif
 
@@ -1034,4 +1035,6 @@ static struct pci_driver als4000_driver = {
 	},
 };
 
+#undef module_lockdown_check
+#define module_lockdown_check() (nr_joystick_port > 0)
 module_pci_driver(als4000_driver);

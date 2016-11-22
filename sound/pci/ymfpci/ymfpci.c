@@ -39,12 +39,14 @@ MODULE_SUPPORTED_DEVICE("{{Yamaha,YMF724},"
 		"{Yamaha,YMF744},"
 		"{Yamaha,YMF754}}");
 
+static unsigned int nr_fm_port, nr_mpu_port;
 static int index[SNDRV_CARDS] = SNDRV_DEFAULT_IDX;	/* Index 0-MAX */
 static char *id[SNDRV_CARDS] = SNDRV_DEFAULT_STR;	/* ID for this card */
 static bool enable[SNDRV_CARDS] = SNDRV_DEFAULT_ENABLE_PNP;	/* Enable this card */
 static long fm_port[SNDRV_CARDS];
 static long mpu_port[SNDRV_CARDS];
 #ifdef SUPPORT_JOYSTICK
+static unsigned int nr_joystick_port;
 static long joystick_port[SNDRV_CARDS];
 #endif
 static bool rear_switch[SNDRV_CARDS];
@@ -55,12 +57,12 @@ module_param_array(id, charp, NULL, 0444);
 MODULE_PARM_DESC(id, "ID string for the Yamaha DS-1 PCI soundcard.");
 module_param_array(enable, bool, NULL, 0444);
 MODULE_PARM_DESC(enable, "Enable Yamaha DS-1 soundcard.");
-module_param_array(mpu_port, long, NULL, 0444);
+module_param_array(mpu_port, long, &nr_mpu_port, 0444);
 MODULE_PARM_DESC(mpu_port, "MPU-401 Port.");
-module_param_array(fm_port, long, NULL, 0444);
+module_param_array(fm_port, long, &nr_fm_port, 0444);
 MODULE_PARM_DESC(fm_port, "FM OPL-3 Port.");
 #ifdef SUPPORT_JOYSTICK
-module_param_array(joystick_port, long, NULL, 0444);
+module_param_array(joystick_port, long, &nr_joystick_port, 0444);
 MODULE_PARM_DESC(joystick_port, "Joystick port address");
 #endif
 module_param_array(rear_switch, bool, NULL, 0444);
@@ -370,4 +372,10 @@ static struct pci_driver ymfpci_driver = {
 #endif
 };
 
+#undef module_lockdown_check
+#ifdef SUPPORT_JOYSTICK
+#define module_lockdown_check() (nr_mpu_port > 0 || nr_fm_port > 0 || nr_joystick_port > 0)
+#else
+#define module_lockdown_check() (nr_mpu_port > 0 || nr_fm_port > 0)
+#endif
 module_pci_driver(ymfpci_driver);

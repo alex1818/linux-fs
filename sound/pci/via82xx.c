@@ -2645,4 +2645,6 @@ static struct pci_driver via82xx_driver = {
 	},
 };
 
+#undef module_lockdown_check
+#define module_lockdown_check() (mpu_port)
 module_pci_driver(via82xx_driver);

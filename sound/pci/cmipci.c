@@ -52,6 +52,7 @@ MODULE_SUPPORTED_DEVICE("{{C-Media,CMI8738},"
 #define SUPPORT_JOYSTICK 1
 #endif
 
+static unsigned int nr_mpu_port, nr_fm_port, nr_joystick_port;
 static int index[SNDRV_CARDS] = SNDRV_DEFAULT_IDX;	/* Index 0-MAX */
 static char *id[SNDRV_CARDS] = SNDRV_DEFAULT_STR;	/* ID for this card */
 static bool enable[SNDRV_CARDS] = SNDRV_DEFAULT_ENABLE_PNP;	/* Enable switches */
@@ -68,9 +69,9 @@ module_param_array(id, charp, NULL, 0444);
 MODULE_PARM_DESC(id, "ID string for C-Media PCI soundcard.");
 module_param_array(enable, bool, NULL, 0444);
 MODULE_PARM_DESC(enable, "Enable C-Media PCI soundcard.");
-module_param_array(mpu_port, long, NULL, 0444);
+module_param_array(mpu_port, long, &nr_mpu_port, 0444);
 MODULE_PARM_DESC(mpu_port, "MPU-401 port.");
-module_param_array(fm_port, long, NULL, 0444);
+module_param_array(fm_port, long, &nr_fm_port, 0444);
 MODULE_PARM_DESC(fm_port, "FM port.");
 module_param_array(soft_ac3, bool, NULL, 0444);
 MODULE_PARM_DESC(soft_ac3, "Software-conversion of raw SPDIF packets (model 033 only).");
@@ -3401,4 +3402,6 @@ static struct pci_driver cmipci_driver = {
 	},
 };
 	
+#undef module_lockdown_check
+#define module_lockdown_check() (nr_mpu_port > 0 || nr_fm_port > 0 || nr_joystick_port > 0)
 module_pci_driver(cmipci_driver);

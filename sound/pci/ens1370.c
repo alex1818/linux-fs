@@ -83,6 +83,7 @@ MODULE_SUPPORTED_DEVICE("{{Ensoniq,AudioPCI ES1371/73},"
 #define SUPPORT_JOYSTICK
 #endif
 
+static unsigned int nr_joystick_port;
 static int index[SNDRV_CARDS] = SNDRV_DEFAULT_IDX;	/* Index 0-MAX */
 static char *id[SNDRV_CARDS] = SNDRV_DEFAULT_STR;	/* ID for this card */
 static bool enable[SNDRV_CARDS] = SNDRV_DEFAULT_ENABLE_PNP;	/* Enable switches */
@@ -106,7 +107,7 @@ module_param_array(enable, bool, NULL, 0444);
 MODULE_PARM_DESC(enable, "Enable Ensoniq AudioPCI soundcard.");
 #ifdef SUPPORT_JOYSTICK
 #ifdef CHIP1371
-module_param_array(joystick_port, int, NULL, 0444);
+module_param_array(joystick_port, int, &nr_joystick_port, 0444);
 MODULE_PARM_DESC(joystick_port, "Joystick port address.");
 #else
 module_param_array(joystick, bool, NULL, 0444);
@@ -2475,4 +2476,6 @@ static struct pci_driver ens137x_driver = {
 	},
 };
 	
+#undef module_lockdown_check
+#define module_lockdown_check() (nr_joystick_port > 0)
 module_pci_driver(ens137x_driver);
