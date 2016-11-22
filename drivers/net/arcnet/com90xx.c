@@ -648,6 +648,11 @@ MODULE_LICENSE("GPL");
 
 static int __init com90xx_init(void)
 {
+	if ((io || irq || shmem) && kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
+
 	if (irq == 2)
 		irq = 9;
 	com90xx_probe();

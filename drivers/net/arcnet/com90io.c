@@ -382,6 +382,11 @@ static int __init com90io_init(void)
 	struct net_device *dev;
 	int err;
 
+	if ((io || irq) && kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
+
 	dev = alloc_arcdev(device);
 	if (!dev)
 		return -ENOMEM;
