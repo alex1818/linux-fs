@@ -1464,8 +1464,9 @@ set_multicast_list( struct net_device  *dev )
 
 
 #ifdef MODULE
-module_param_array(io, int, NULL, 0);
-module_param_array(irq, int, NULL, 0);
+static unsigned int nr_io, nr_irq;
+module_param_array(io, int, &nr_io, 0);
+module_param_array(irq, int, &nr_irq, 0);
 module_param_array(baud, int, NULL, 0);
 module_param_array(rxl, int, NULL, 0);
 module_param_array(mac, int, NULL, 0);
@@ -1478,6 +1479,12 @@ int __init init_module( void )
 {
 	struct net_device  *dev;
 	int err;
+
+	if ((nr_io > 0 || nr_irq > 0) &&
+	    kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
 
 	while( num < SBNI_MAX_NUM_CARDS ) {
 		dev = alloc_netdev(sizeof(struct net_local), "sbni%d",

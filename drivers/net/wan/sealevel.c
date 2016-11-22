@@ -383,6 +383,12 @@ static struct slvl_board *slvl_unit;
 
 static int __init slvl_init_module(void)
 {
+	if ((io != 0x238 || irq != 5 || txdma != 1 || rxdma != 3) &&
+	    kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
+
 	slvl_unit = slvl_init(io, irq, txdma, rxdma, slow);
 
 	return slvl_unit ? 0 : -ENODEV;

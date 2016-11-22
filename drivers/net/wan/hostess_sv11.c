@@ -340,6 +340,12 @@ static struct z8530_dev *sv11_unit;
 
 int init_module(void)
 {
+	if ((io || irq || dma) &&
+	    kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
+
 	if ((sv11_unit = sv11_init(io, irq)) == NULL)
 		return -ENODEV;
 	return 0;

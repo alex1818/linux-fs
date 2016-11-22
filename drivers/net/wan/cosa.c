@@ -232,11 +232,12 @@ static int irq[MAX_CARDS+1] = { -1, -1, -1, -1, -1, -1, 0, };
 static struct class *cosa_class;
 
 #ifdef MODULE
-module_param_array(io, int, NULL, 0);
+static unsigned int nr_io, nr_dma, nr_irq;
+module_param_array(io, int, &nr_io, 0);
 MODULE_PARM_DESC(io, "The I/O bases of the COSA or SRP cards");
-module_param_array(irq, int, NULL, 0);
+module_param_array(irq, int, &nr_irq, 0);
 MODULE_PARM_DESC(irq, "The IRQ lines of the COSA or SRP cards");
-module_param_array(dma, int, NULL, 0);
+module_param_array(dma, int, &nr_dma, 0);
 MODULE_PARM_DESC(dma, "The DMA channels of the COSA or SRP cards");
 
 MODULE_AUTHOR("Jan \"Yenya\" Kasprzak, <kas@fi.muni.cz>");
@@ -360,6 +361,12 @@ static inline struct channel_data* dev_to_chan(struct net_device *dev)
 static int __init cosa_init(void)
 {
 	int i, err = 0;
+
+	if ((nr_io > 0 || nr_irq > 0 || nr_dma > 0) &&
+	    kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
 
 	if (cosa_major > 0) {
 		if (register_chrdev(cosa_major, "cosa", &cosa_fops)) {
