@@ -73,6 +73,7 @@ MODULE_LICENSE("GPL v2");
 #define COR_DEFAULT	0x00
 #define BCR_DEFAULT	BUSCFG_CBY
 
+static unsigned int nr_port, nr_mem;
 static unsigned long port[MAXDEV];
 static unsigned long mem[MAXDEV];
 static int irq[MAXDEV];
@@ -82,10 +83,10 @@ static u8 cor[MAXDEV] = {[0 ... (MAXDEV - 1)] = 0xff};
 static u8 bcr[MAXDEV] = {[0 ... (MAXDEV - 1)] = 0xff};
 static int indirect[MAXDEV] = {[0 ... (MAXDEV - 1)] = -1};
 
-module_param_array(port, ulong, NULL, S_IRUGO);
+module_param_array(port, ulong, &nr_port, S_IRUGO);
 MODULE_PARM_DESC(port, "I/O port number");
 
-module_param_array(mem, ulong, NULL, S_IRUGO);
+module_param_array(mem, ulong, &nr_mem, S_IRUGO);
 MODULE_PARM_DESC(mem, "I/O memory address");
 
 module_param_array(indirect, int, NULL, S_IRUGO);
@@ -324,6 +325,11 @@ static struct platform_driver cc770_isa_driver = {
 static int __init cc770_isa_init(void)
 {
 	int idx, err;
+
+	if ((nr_port > 0 || nr_mem > 0) && kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
 
 	for (idx = 0; idx < ARRAY_SIZE(cc770_isa_devs); idx++) {
 		if ((port[idx] || mem[idx]) && irq[idx]) {

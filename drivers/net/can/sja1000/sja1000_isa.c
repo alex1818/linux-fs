@@ -39,6 +39,7 @@ MODULE_LICENSE("GPL v2");
 #define CDR_DEFAULT	(CDR_CBP | CDR_CLK_OFF)
 #define OCR_DEFAULT	OCR_TX0_PUSHPULL
 
+static unsigned int nr_port, nr_mem;
 static unsigned long port[MAXDEV];
 static unsigned long mem[MAXDEV];
 static int irq[MAXDEV];
@@ -48,10 +49,10 @@ static unsigned char ocr[MAXDEV] = {[0 ... (MAXDEV - 1)] = 0xff};
 static int indirect[MAXDEV] = {[0 ... (MAXDEV - 1)] = -1};
 static spinlock_t indirect_lock[MAXDEV];  /* lock for indirect access mode */
 
-module_param_array(port, ulong, NULL, S_IRUGO);
+module_param_array(port, ulong, &nr_port, S_IRUGO);
 MODULE_PARM_DESC(port, "I/O port number");
 
-module_param_array(mem, ulong, NULL, S_IRUGO);
+module_param_array(mem, ulong, &nr_mem, S_IRUGO);
 MODULE_PARM_DESC(mem, "I/O memory address");
 
 module_param_array(indirect, int, NULL, S_IRUGO);
@@ -265,6 +266,11 @@ static struct platform_driver sja1000_isa_driver = {
 static int __init sja1000_isa_init(void)
 {
 	int idx, err;
+
+	if ((nr_port > 0 || nr_mem > 0) && kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
 
 	for (idx = 0; idx < MAXDEV; idx++) {
 		if ((port[idx] || mem[idx]) && irq[idx]) {
