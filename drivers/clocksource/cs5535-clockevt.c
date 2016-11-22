@@ -145,6 +145,11 @@ static int __init cs5535_mfgpt_init(void)
 	int ret;
 	uint16_t val;
 
+	if (timer_irq != 0 && kernel_is_locked_down()) {
+		pr_err(DRV_NAME ": Kernel is locked down\n");
+		return -EPERM;
+	}
+
 	timer = cs5535_mfgpt_alloc_timer(MFGPT_TIMER_ANY, MFGPT_DOMAIN_WORKING);
 	if (!timer) {
 		printk(KERN_ERR DRV_NAME ": Could not allocate MFGPT timer\n");
