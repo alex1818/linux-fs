@@ -325,6 +325,7 @@ static u8 gdth_direction_tab[0x100] = {
 
 /* LILO and modprobe/insmod parameters */
 /* IRQ list for GDT3000/3020 EISA controllers */
+static unsigned int nr_irq;
 static int irq[MAXHA] __initdata = 
 {0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,
  0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff};
@@ -353,7 +354,7 @@ static int probe_eisa_isa = 0;
 static int force_dma32 = 0;
 
 /* parameters for modprobe/insmod */
-module_param_array(irq, int, NULL, 0);
+module_param_array(irq, int, &nr_irq, 0);
 module_param(disable, int, 0);
 module_param(reserve_mode, int, 0);
 module_param_array(reserve_list, int, NULL, 0);
@@ -5153,6 +5154,11 @@ static struct notifier_block gdth_notifier = {
 
 static int __init gdth_init(void)
 {
+	if (nr_irq > 0 && kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
+
 	if (disable) {
 		printk("GDT-HA: Controller driver disabled from"
                        " command line !\n");

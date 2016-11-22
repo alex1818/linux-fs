@@ -135,10 +135,11 @@ err:
 
 #define MAX_QLOGICFAS	8
 static struct qlogicfas408_priv *cards;
+static unsigned int nr_iobase, nr_irq;
 static int iobase[MAX_QLOGICFAS];
 static int irq[MAX_QLOGICFAS] = { [0 ... MAX_QLOGICFAS-1] = -1 };
-module_param_array(iobase, int, NULL, 0);
-module_param_array(irq, int, NULL, 0);
+module_param_array(iobase, int, &nr_iobase, 0);
+module_param_array(irq, int, &nr_irq, 0);
 MODULE_PARM_DESC(iobase, "I/O address");
 MODULE_PARM_DESC(irq, "IRQ");
 
@@ -198,6 +199,11 @@ static struct scsi_host_template qlogicfas_driver_template = {
 
 static __init int qlogicfas_init(void)
 {
+	if ((nr_iobase > 0 || nr_irq > 0) && kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
+
 	if (!qlogicfas_detect(&qlogicfas_driver_template)) {
 		/* no cards found */
 		printk(KERN_INFO "%s: no cards were found, please specify "

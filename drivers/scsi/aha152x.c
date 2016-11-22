@@ -330,10 +330,12 @@ MODULE_LICENSE("GPL");
 
 #if !defined(PCMCIA)
 #if defined(MODULE)
+static unsigned int nr_io;
 static int io[] = {0, 0};
 module_param_array(io, int, NULL, 0);
 MODULE_PARM_DESC(io,"base io address of controller");
 
+static unsigned int nr_irq;
 static int irq[] = {0, 0};
 module_param_array(irq, int, NULL, 0);
 MODULE_PARM_DESC(irq,"interrupt for controller");
@@ -3081,6 +3083,15 @@ static int __init aha152x_init(void)
 #endif
 #ifdef __ISAPNP__
 	struct pnp_dev *dev=NULL, *pnpdev[2] = {NULL, NULL};
+#endif
+
+#if !defined(PCMCIA)
+#if defined(MODULE)
+	if ((nr_io > 0 || nr_irq > 0) && kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
+#endif
 #endif
 
 	if ( setup_count ) {

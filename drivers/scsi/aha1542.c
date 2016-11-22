@@ -30,8 +30,9 @@ static bool isapnp = 1;
 module_param(isapnp, bool, 0);
 MODULE_PARM_DESC(isapnp, "enable PnP support (default=1)");
 
+static unsigned int nr_io;
 static int io[MAXBOARDS] = { 0x330, 0x334, 0, 0 };
-module_param_array(io, int, NULL, 0);
+module_param_array(io, int, &nr_io, 0);
 MODULE_PARM_DESC(io, "base IO address of controller (0x130,0x134,0x230,0x234,0x330,0x334, default=0x330,0x334)");
 
 /* time AHA spends on the AT-bus during data transfer */
@@ -1038,6 +1039,11 @@ static int pnp_registered;
 static int __init aha1542_init(void)
 {
 	int ret = 0;
+
+	if (nr_io > 0 && kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
 
 #ifdef CONFIG_PNP
 	if (isapnp) {

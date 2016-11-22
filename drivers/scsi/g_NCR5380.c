@@ -52,12 +52,14 @@ module_param(ncr_53c400a, int, 0);
 module_param(dtc_3181e, int, 0);
 module_param(hp_c2502, int, 0);
 
+static unsigned int nr_irq;
 static int irq[] = { 0, 0, 0, 0, 0, 0, 0, 0 };
-module_param_array(irq, int, NULL, 0);
+module_param_array(irq, int, &nr_irq, 0);
 MODULE_PARM_DESC(irq, "IRQ number(s)");
 
+static unsigned int nr_base;
 static int base[] = { 0, 0, 0, 0, 0, 0, 0, 0 };
-module_param_array(base, int, NULL, 0);
+module_param_array(base, int, &nr_base, 0);
 MODULE_PARM_DESC(base, "base address(es)");
 
 static int card[] = { -1, -1, -1, -1, -1, -1, -1, -1 };
@@ -607,6 +609,12 @@ static int pnp_registered, isa_registered;
 static int __init generic_NCR5380_init(void)
 {
 	int ret = 0;
+
+	if ((nr_base > 0 || nr_irq > 0 || ncr_addr || ncr_irq) &&
+	    kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
 
 	/* compatibility with old-style parameters */
 	if (irq[0] == 0 && base[0] == 0 && card[0] == -1) {
