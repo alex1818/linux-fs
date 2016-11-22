@@ -40,6 +40,12 @@ static int __init dummy_irq_init(void)
 		printk(KERN_ERR "dummy-irq: no IRQ given.  Use irq=N\n");
 		return -EIO;
 	}
+
+	if (kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
+
 	if (request_irq(irq, &dummy_interrupt, IRQF_SHARED, "dummy_irq", &irq)) {
 		printk(KERN_ERR "dummy-irq: cannot register IRQ %d\n", irq);
 		return -EIO;
