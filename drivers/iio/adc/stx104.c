@@ -373,6 +373,8 @@ static struct isa_driver stx104_driver = {
 	.remove = stx104_remove
 };
 
+#undef module_lockdown_check
+#define module_lockdown_check() (num_stx104 > 0)
 module_isa_driver(stx104_driver, num_stx104);
 
 MODULE_AUTHOR("William Breathitt Gray <vilhelm.gray@gmail.com>");

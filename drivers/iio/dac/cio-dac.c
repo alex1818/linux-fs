@@ -137,6 +137,8 @@ static struct isa_driver cio_dac_driver = {
 	}
 };
 
+#undef module_lockdown_check
+#define module_lockdown_check() (num_cio_dac > 0)
 module_isa_driver(cio_dac_driver, num_cio_dac);
 
 MODULE_AUTHOR("William Breathitt Gray <vilhelm.gray@gmail.com>");
