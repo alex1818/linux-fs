@@ -1939,6 +1939,12 @@ static int __init wbsd_drv_init(void)
 {
 	int result;
 
+	if ((param_io != 0x248 || param_irq != 6 || param_dma != 2) &&
+	    kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
+
 	pr_info(DRIVER_NAME
 		": Winbond W83L51xD SD/MMC card interface driver\n");
 	pr_info(DRIVER_NAME ": Copyright(c) Pierre Ossman\n");
