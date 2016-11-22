@@ -315,6 +315,8 @@ module_param_named(start, synth_keypc.startup, short, S_IRUGO);
 MODULE_PARM_DESC(port, "Set the port for the synthesizer (override probing).");
 MODULE_PARM_DESC(start, "Start the synthesizer once it is loaded.");
 
+#undef module_lockdown_check
+#define module_lockdown_check() (port_forced)
 module_spk_synth(synth_keypc);
 
 MODULE_AUTHOR("David Borowski");
