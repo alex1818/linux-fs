@@ -917,6 +917,11 @@ static int __init lirc_sir_init(void)
 {
 	int retval;
 
+	if ((io || irq) && kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
+
 	retval = platform_driver_register(&lirc_sir_driver);
 	if (retval) {
 		pr_err("Platform driver register failed!\n");

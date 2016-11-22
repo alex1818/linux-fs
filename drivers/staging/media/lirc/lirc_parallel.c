@@ -630,6 +630,11 @@ static int __init lirc_parallel_init(void)
 {
 	int result;
 
+	if ((io || irq) && kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
+
 	result = platform_driver_register(&lirc_parallel_driver);
 	if (result) {
 		pr_notice("platform_driver_register returned %d\n", result);

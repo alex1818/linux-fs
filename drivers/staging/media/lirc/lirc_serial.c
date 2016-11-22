@@ -1030,6 +1030,11 @@ static int __init lirc_serial_init_module(void)
 {
 	int result;
 
+	if ((io || irq || ioshift || iommap) && kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
+
 	switch (type) {
 	case LIRC_HOMEBREW:
 	case LIRC_IRDEO:
