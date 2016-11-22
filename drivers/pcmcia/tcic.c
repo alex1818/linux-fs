@@ -782,6 +782,12 @@ static int tcic_init(struct pcmcia_socket *s)
 	pccard_io_map io = { 0, 0, 0, 0, 1 };
 	pccard_mem_map mem = { .res = &res, };
 
+	if ((tcic_base != TCIC_BASE || irq_mask != 0xffff || irq_list_count > 0) &&
+	    kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
+
 	for (i = 0; i < 2; i++) {
 		io.map = i;
 		tcic_set_io_map(s, &io);

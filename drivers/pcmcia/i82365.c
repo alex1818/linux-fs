@@ -1242,6 +1242,12 @@ static int __init init_i82365(void)
 {
     int i, ret;
 
+    if ((i365_base != 0x3e0 || irq_list_count > 0) &&
+	kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
+
     ret = platform_driver_register(&i82365_driver);
     if (ret)
 	goto err_out;
