@@ -260,6 +260,8 @@ static struct isa_driver gpiomm_driver = {
 	.remove = gpiomm_remove
 };
 
+#undef module_lockdown_check
+#define module_lockdown_check() (num_gpiomm > 0)
 module_isa_driver(gpiomm_driver, num_gpiomm);
 
 MODULE_AUTHOR("William Breathitt Gray <vilhelm.gray@gmail.com>");

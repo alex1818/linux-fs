@@ -299,6 +299,9 @@ static struct isa_driver idi_48_driver = {
 	},
 	.remove = idi_48_remove
 };
+
+#undef module_lockdown_check
+#define module_lockdown_check() (num_idi_48 > 0)
 module_isa_driver(idi_48_driver, num_idi_48);
 
 MODULE_AUTHOR("William Breathitt Gray <vilhelm.gray@gmail.com>");

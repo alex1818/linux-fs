@@ -275,6 +275,8 @@ static struct isa_driver idio_16_driver = {
 	.remove = idio_16_remove
 };
 
+#undef module_lockdown_check
+#define module_lockdown_check() (num_idio_16 > 0)
 module_isa_driver(idio_16_driver, num_idio_16);
 
 MODULE_AUTHOR("William Breathitt Gray <vilhelm.gray@gmail.com>");

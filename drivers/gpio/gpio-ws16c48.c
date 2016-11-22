@@ -388,6 +388,8 @@ static struct isa_driver ws16c48_driver = {
 	.remove = ws16c48_remove
 };
 
+#undef module_lockdown_check
+#define module_lockdown_check() (num_ws16c48 > 0)
 module_isa_driver(ws16c48_driver, num_ws16c48);
 
 MODULE_AUTHOR("William Breathitt Gray <vilhelm.gray@gmail.com>");

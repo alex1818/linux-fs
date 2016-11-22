@@ -393,6 +393,9 @@ static struct isa_driver dio48e_driver = {
 	},
 	.remove = dio48e_remove
 };
+
+#undef module_lockdown_check
+#define module_lockdown_check() (num_dio48e > 0)
 module_isa_driver(dio48e_driver, num_dio48e);
 
 MODULE_AUTHOR("William Breathitt Gray <vilhelm.gray@gmail.com>");
