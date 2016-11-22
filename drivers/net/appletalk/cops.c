@@ -992,6 +992,12 @@ module_param(board_type, int, 0);
 
 static int __init cops_module_init(void)
 {
+	if ((io != 0x240 || irq != 5) &&
+	    kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
+
 	if (io == 0)
 		printk(KERN_WARNING "%s: You shouldn't autoprobe with insmod\n",
 			cardname);

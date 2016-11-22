@@ -1238,6 +1238,11 @@ module_param(dma, int, 0);
 
 static int __init ltpc_module_init(void)
 {
+	if ((io || irq || dma) && kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
+
         if(io == 0)
 		printk(KERN_NOTICE
 		       "ltpc: Autoprobing is not recommended for modules\n");
