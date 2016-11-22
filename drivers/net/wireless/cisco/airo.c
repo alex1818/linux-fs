@@ -246,8 +246,9 @@ MODULE_DESCRIPTION("Support for Cisco/Aironet 802.11 wireless ethernet cards.  "
 		   "Direct support for ISA/PCI/MPI cards and support for PCMCIA when used with airo_cs.");
 MODULE_LICENSE("Dual BSD/GPL");
 MODULE_SUPPORTED_DEVICE("Aironet 4500, 4800 and Cisco 340/350");
-module_param_array(io, int, NULL, 0);
-module_param_array(irq, int, NULL, 0);
+static unsigned int nr_io, nr_irq;
+module_param_array(io, int, &nr_io, 0);
+module_param_array(irq, int, &nr_irq, 0);
 module_param_array(rates, int, NULL, 0);
 module_param_array(ssids, charp, NULL, 0);
 module_param(auto_wep, int, 0);
@@ -5648,6 +5649,12 @@ static int airo_pci_resume(struct pci_dev *pdev)
 static int __init airo_init_module( void )
 {
 	int i;
+
+	if ((nr_io > 0 || nr_irq > 0) &&
+	    kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
 
 	proc_kuid = make_kuid(&init_user_ns, proc_uid);
 	proc_kgid = make_kgid(&init_user_ns, proc_gid);
