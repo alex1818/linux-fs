@@ -1466,6 +1466,11 @@ static int __init zoran_init(void)
 {
 	int res;
 
+	if (vidmem && kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
+
 	printk(KERN_INFO "Zoran MJPEG board driver version %s\n",
 	       ZORAN_VERSION);
 
