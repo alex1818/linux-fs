@@ -611,6 +611,12 @@ static int __init arcfb_init(void)
 {
 	int ret;
 
+	if ((dio_addr || cio_addr || c2io_addr || irq) &&
+	    kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
+
 	if (!arcfb_enable)
 		return -ENXIO;
 

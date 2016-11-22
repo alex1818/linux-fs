@@ -153,6 +153,12 @@ static struct platform_device *n411_device;
 static int __init n411_init(void)
 {
 	int ret;
+
+	if ((dio_addr || cio_addr || c2io_addr) &&  kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
+
 	if (!dio_addr || !cio_addr || !c2io_addr) {
 		printk(KERN_WARNING "no IO addresses supplied\n");
 		return -EINVAL;
