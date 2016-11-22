@@ -34,6 +34,7 @@ MODULE_DESCRIPTION("Sound Blaster 1.0/2.0/Pro");
 MODULE_LICENSE("GPL");
 MODULE_SUPPORTED_DEVICE("{{Creative Labs,SB 1.0/SB 2.0/SB Pro}}");
 
+static unsigned int nr_port, nr_irq, nr_dma8;
 static int index[SNDRV_CARDS] = SNDRV_DEFAULT_IDX;	/* Index 0-MAX */
 static char *id[SNDRV_CARDS] = SNDRV_DEFAULT_STR;	/* ID for this card */
 static bool enable[SNDRV_CARDS] = SNDRV_DEFAULT_ENABLE;	/* Enable this card */
@@ -47,11 +48,11 @@ module_param_array(id, charp, NULL, 0444);
 MODULE_PARM_DESC(id, "ID string for Sound Blaster soundcard.");
 module_param_array(enable, bool, NULL, 0444);
 MODULE_PARM_DESC(enable, "Enable Sound Blaster soundcard.");
-module_param_array(port, long, NULL, 0444);
+module_param_array(port, long, &nr_port, 0444);
 MODULE_PARM_DESC(port, "Port # for SB8 driver.");
-module_param_array(irq, int, NULL, 0444);
+module_param_array(irq, int, &nr_irq, 0444);
 MODULE_PARM_DESC(irq, "IRQ # for SB8 driver.");
-module_param_array(dma8, int, NULL, 0444);
+module_param_array(dma8, int, &nr_dma8, 0444);
 MODULE_PARM_DESC(dma8, "8-bit DMA # for SB8 driver.");
 
 struct snd_sb8 {
@@ -251,4 +252,7 @@ static struct isa_driver snd_sb8_driver = {
 	},
 };
 
+#undef module_lockdown_check
+#define module_lockdown_check() \
+	(nr_port > 0 || nr_irq > 0 || nr_dma8 > 0)
 module_isa_driver(snd_sb8_driver, SNDRV_CARDS);

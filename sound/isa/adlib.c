@@ -16,6 +16,7 @@ MODULE_DESCRIPTION(CRD_NAME);
 MODULE_AUTHOR("Rene Herman");
 MODULE_LICENSE("GPL");
 
+static unsigned int nr_port;
 static int index[SNDRV_CARDS] = SNDRV_DEFAULT_IDX;
 static char *id[SNDRV_CARDS] = SNDRV_DEFAULT_STR;
 static bool enable[SNDRV_CARDS] = SNDRV_DEFAULT_ENABLE;
@@ -27,7 +28,7 @@ module_param_array(id, charp, NULL, 0444);
 MODULE_PARM_DESC(id, "ID string for " CRD_NAME " soundcard.");
 module_param_array(enable, bool, NULL, 0444);
 MODULE_PARM_DESC(enable, "Enable " CRD_NAME " soundcard.");
-module_param_array(port, long, NULL, 0444);
+module_param_array(port, long, &nr_port, 0444);
 MODULE_PARM_DESC(port, "Port # for " CRD_NAME " driver.");
 
 static int snd_adlib_match(struct device *dev, unsigned int n)
@@ -112,4 +113,6 @@ static struct isa_driver snd_adlib_driver = {
 	}
 };
 
+#undef module_lockdown_check
+#define module_lockdown_check() (nr_port > 0)
 module_isa_driver(snd_adlib_driver, SNDRV_CARDS);

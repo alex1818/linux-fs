@@ -43,6 +43,8 @@ MODULE_SUPPORTED_DEVICE("{{Yamaha,YMF719E-S},"
 		"{Intel,AL440LX sound},"
 	        "{NeoMagic,MagicWave 3DX}}");
 
+static unsigned int nr_port, nr_sb_port, nr_wss_port, nr_fm_port, nr_midi_port;
+static unsigned int nr_irq, nr_dma1, nr_dma2;
 static int index[SNDRV_CARDS] = SNDRV_DEFAULT_IDX;	/* Index 0-MAX */
 static char *id[SNDRV_CARDS] = SNDRV_DEFAULT_STR;	/* ID for this card */
 static bool enable[SNDRV_CARDS] = SNDRV_DEFAULT_ENABLE_ISAPNP; /* Enable this card */
@@ -69,21 +71,21 @@ MODULE_PARM_DESC(enable, "Enable OPL3-SA soundcard.");
 module_param_array(isapnp, bool, NULL, 0444);
 MODULE_PARM_DESC(isapnp, "PnP detection for specified soundcard.");
 #endif
-module_param_array(port, long, NULL, 0444);
+module_param_array(port, long, &nr_port, 0444);
 MODULE_PARM_DESC(port, "Port # for OPL3-SA driver.");
-module_param_array(sb_port, long, NULL, 0444);
+module_param_array(sb_port, long, &nr_sb_port, 0444);
 MODULE_PARM_DESC(sb_port, "SB port # for OPL3-SA driver.");
-module_param_array(wss_port, long, NULL, 0444);
+module_param_array(wss_port, long, &nr_wss_port, 0444);
 MODULE_PARM_DESC(wss_port, "WSS port # for OPL3-SA driver.");
-module_param_array(fm_port, long, NULL, 0444);
+module_param_array(fm_port, long, &nr_fm_port, 0444);
 MODULE_PARM_DESC(fm_port, "FM port # for OPL3-SA driver.");
-module_param_array(midi_port, long, NULL, 0444);
+module_param_array(midi_port, long, &nr_midi_port, 0444);
 MODULE_PARM_DESC(midi_port, "MIDI port # for OPL3-SA driver.");
-module_param_array(irq, int, NULL, 0444);
+module_param_array(irq, int, &nr_irq, 0444);
 MODULE_PARM_DESC(irq, "IRQ # for OPL3-SA driver.");
-module_param_array(dma1, int, NULL, 0444);
+module_param_array(dma1, int, &nr_dma1, 0444);
 MODULE_PARM_DESC(dma1, "DMA1 # for OPL3-SA driver.");
-module_param_array(dma2, int, NULL, 0444);
+module_param_array(dma2, int, &nr_dma2, 0444);
 MODULE_PARM_DESC(dma2, "DMA2 # for OPL3-SA driver.");
 module_param_array(opl3sa3_ymode, int, NULL, 0444);
 MODULE_PARM_DESC(opl3sa3_ymode, "Speaker size selection for 3D Enhancement mode: Desktop/Large Notebook/Small Notebook/HiFi.");
@@ -930,6 +932,14 @@ static struct isa_driver snd_opl3sa2_isa_driver = {
 static int __init alsa_card_opl3sa2_init(void)
 {
 	int err;
+
+	if ((nr_port > 0 || nr_sb_port > 0 || nr_wss_port > 0 ||
+	     nr_fm_port > 0 || nr_midi_port > 0 ||
+	     nr_irq > 0 || nr_dma1 > 0 || nr_dma2) &&
+	    kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
 
 	err = isa_register_driver(&snd_opl3sa2_isa_driver, SNDRV_CARDS);
 #ifdef CONFIG_PNP

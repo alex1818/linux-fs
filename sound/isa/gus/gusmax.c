@@ -50,19 +50,20 @@ static int joystick_dac[SNDRV_CARDS] = {[0 ... (SNDRV_CARDS - 1)] = 29};
 static int channels[SNDRV_CARDS] = {[0 ... (SNDRV_CARDS - 1)] = 24};
 static int pcm_channels[SNDRV_CARDS] = {[0 ... (SNDRV_CARDS - 1)] = 2};
 
+static unsigned int nr_port, nr_irq, nr_dma1, nr_dma2;
 module_param_array(index, int, NULL, 0444);
 MODULE_PARM_DESC(index, "Index value for GUS MAX soundcard.");
 module_param_array(id, charp, NULL, 0444);
 MODULE_PARM_DESC(id, "ID string for GUS MAX soundcard.");
 module_param_array(enable, bool, NULL, 0444);
 MODULE_PARM_DESC(enable, "Enable GUS MAX soundcard.");
-module_param_array(port, long, NULL, 0444);
+module_param_array(port, long, &nr_port, 0444);
 MODULE_PARM_DESC(port, "Port # for GUS MAX driver.");
-module_param_array(irq, int, NULL, 0444);
+module_param_array(irq, int, &nr_irq, 0444);
 MODULE_PARM_DESC(irq, "IRQ # for GUS MAX driver.");
-module_param_array(dma1, int, NULL, 0444);
+module_param_array(dma1, int, &nr_dma1, 0444);
 MODULE_PARM_DESC(dma1, "DMA1 # for GUS MAX driver.");
-module_param_array(dma2, int, NULL, 0444);
+module_param_array(dma2, int, &nr_dma2, 0444);
 MODULE_PARM_DESC(dma2, "DMA2 # for GUS MAX driver.");
 module_param_array(joystick_dac, int, NULL, 0444);
 MODULE_PARM_DESC(joystick_dac, "Joystick DAC level 0.59V-4.52V or 0.389V-2.98V for GUS MAX driver.");
@@ -370,4 +371,7 @@ static struct isa_driver snd_gusmax_driver = {
 	},
 };
 
+#undef module_lockdown_check
+#define module_lockdown_check() \
+	(nr_port > 0 || nr_irq > 0 || nr_dma1 > 0 || nr_dma2 > 0)
 module_isa_driver(snd_gusmax_driver, SNDRV_CARDS);

@@ -1177,6 +1177,21 @@ static struct pnp_card_driver opti9xx_pnpc_driver = {
 
 static int __init alsa_card_opti9xx_init(void)
 {
+	if ((port != SNDRV_DEFAULT_PORT1 ||
+	     mpu_port != SNDRV_DEFAULT_PORT1 ||
+	     fm_port != SNDRV_DEFAULT_PORT1 ||
+	     irq != SNDRV_DEFAULT_IRQ1 ||
+	     mpu_irq != SNDRV_DEFAULT_IRQ1 ||
+	     dma1 != SNDRV_DEFAULT_DMA1
+#if defined(CS4231) || defined(OPTi93X)
+	     || dma2 != SNDRV_DEFAULT_DMA1
+#endif
+	     ) &&
+	    kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
+
 #ifdef CONFIG_PNP
 	pnp_register_card_driver(&opti9xx_pnpc_driver);
 	if (snd_opti9xx_pnp_is_probed)

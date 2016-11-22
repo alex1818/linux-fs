@@ -34,6 +34,7 @@ MODULE_LICENSE("GPL");
 static int cmi8328_ports[] = { 0x530, 0xe80, 0xf40, 0x604 };
 #define CMI8328_MAX	ARRAY_SIZE(cmi8328_ports)
 
+static unsigned int nr_port, nr_irq, nr_dma1, nr_dma2, nr_mpuport, nr_mpuirq;
 static int index[CMI8328_MAX] =     {[0 ... (CMI8328_MAX-1)] = -1};
 static char *id[CMI8328_MAX] =      {[0 ... (CMI8328_MAX-1)] = NULL};
 static long port[CMI8328_MAX] =     {[0 ... (CMI8328_MAX-1)] = SNDRV_AUTO_PORT};
@@ -51,18 +52,18 @@ MODULE_PARM_DESC(index, "Index value for CMI8328 soundcard.");
 module_param_array(id, charp, NULL, 0444);
 MODULE_PARM_DESC(id, "ID string for CMI8328 soundcard.");
 
-module_param_array(port, long, NULL, 0444);
+module_param_array(port, long, &nr_port, 0444);
 MODULE_PARM_DESC(port, "Port # for CMI8328 driver.");
-module_param_array(irq, int, NULL, 0444);
+module_param_array(irq, int, &nr_irq, 0444);
 MODULE_PARM_DESC(irq, "IRQ # for CMI8328 driver.");
-module_param_array(dma1, int, NULL, 0444);
+module_param_array(dma1, int, &nr_dma1, 0444);
 MODULE_PARM_DESC(dma1, "DMA1 for CMI8328 driver.");
-module_param_array(dma2, int, NULL, 0444);
+module_param_array(dma2, int, &nr_dma2, 0444);
 MODULE_PARM_DESC(dma2, "DMA2 for CMI8328 driver.");
 
-module_param_array(mpuport, long, NULL, 0444);
+module_param_array(mpuport, long, &nr_mpuport, 0444);
 MODULE_PARM_DESC(mpuport, "MPU-401 port # for CMI8328 driver.");
-module_param_array(mpuirq, int, NULL, 0444);
+module_param_array(mpuirq, int, &nr_mpuirq, 0444);
 MODULE_PARM_DESC(mpuirq, "IRQ # for CMI8328 MPU-401 port.");
 #ifdef SUPPORT_JOYSTICK
 module_param_array(gameport, bool, NULL, 0444);
@@ -469,4 +470,8 @@ static struct isa_driver snd_cmi8328_driver = {
 	},
 };
 
+#undef module_lockdown_check
+#define module_lockdown_check() \
+	(nr_port > 0 || nr_irq > 0 || nr_dma1 > 0 || nr_dma2 > 0 ||	\
+	 nr_mpuport > 0 || nr_mpuirq > 0)
 module_isa_driver(snd_cmi8328_driver, CMI8328_MAX);

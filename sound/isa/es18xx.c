@@ -1972,6 +1972,8 @@ MODULE_SUPPORTED_DEVICE("{{ESS,ES1868 PnP AudioDrive},"
 		"{ESS,ES1887 AudioDrive},"
 		"{ESS,ES1888 AudioDrive}}");
 
+static unsigned int nr_port, nr_irq, nr_fm_port;
+static unsigned int nr_mpu_port, nr_dma1, nr_dma2;
 static int index[SNDRV_CARDS] = SNDRV_DEFAULT_IDX;	/* Index 0-MAX */
 static char *id[SNDRV_CARDS] = SNDRV_DEFAULT_STR;	/* ID for this card */
 static bool enable[SNDRV_CARDS] = SNDRV_DEFAULT_ENABLE_ISAPNP; /* Enable this card */
@@ -1999,17 +2001,17 @@ MODULE_PARM_DESC(enable, "Enable ES18xx soundcard.");
 module_param_array(isapnp, bool, NULL, 0444);
 MODULE_PARM_DESC(isapnp, "PnP detection for specified soundcard.");
 #endif
-module_param_array(port, long, NULL, 0444);
+module_param_array(port, long, &nr_port, 0444);
 MODULE_PARM_DESC(port, "Port # for ES18xx driver.");
-module_param_array(mpu_port, long, NULL, 0444);
+module_param_array(mpu_port, long, &nr_mpu_port, 0444);
 MODULE_PARM_DESC(mpu_port, "MPU-401 port # for ES18xx driver.");
-module_param_array(fm_port, long, NULL, 0444);
+module_param_array(fm_port, long, &nr_fm_port, 0444);
 MODULE_PARM_DESC(fm_port, "FM port # for ES18xx driver.");
-module_param_array(irq, int, NULL, 0444);
+module_param_array(irq, int, &nr_irq, 0444);
 MODULE_PARM_DESC(irq, "IRQ # for ES18xx driver.");
-module_param_array(dma1, int, NULL, 0444);
+module_param_array(dma1, int, &nr_dma1, 0444);
 MODULE_PARM_DESC(dma1, "DMA 1 # for ES18xx driver.");
-module_param_array(dma2, int, NULL, 0444);
+module_param_array(dma2, int, &nr_dma2, 0444);
 MODULE_PARM_DESC(dma2, "DMA 2 # for ES18xx driver.");
 
 #ifdef CONFIG_PNP
@@ -2404,6 +2406,14 @@ static struct pnp_card_driver es18xx_pnpc_driver = {
 static int __init alsa_card_es18xx_init(void)
 {
 	int err;
+
+	if ((nr_port > 0 || nr_irq > 0 ||
+	     nr_dma1 > 0 || nr_dma2 > 0 ||
+	     nr_fm_port > 0 || nr_mpu_port > 0) &&
+	    kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
 
 	err = isa_register_driver(&snd_es18xx_isa_driver, SNDRV_CARDS);
 #ifdef CONFIG_PNP

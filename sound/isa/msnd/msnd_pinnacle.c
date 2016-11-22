@@ -800,22 +800,25 @@ MODULE_LICENSE("GPL");
 MODULE_FIRMWARE(INITCODEFILE);
 MODULE_FIRMWARE(PERMCODEFILE);
 
-module_param_array(io, long, NULL, S_IRUGO);
+static unsigned int nr_io, nr_irq, nr_mem;
+module_param_array(io, long, &nr_io, S_IRUGO);
 MODULE_PARM_DESC(io, "IO port #");
-module_param_array(irq, int, NULL, S_IRUGO);
-module_param_array(mem, long, NULL, S_IRUGO);
+module_param_array(irq, int, &nr_irq, S_IRUGO);
+module_param_array(mem, long, &nr_mem, S_IRUGO);
 module_param_array(write_ndelay, int, NULL, S_IRUGO);
 module_param(calibrate_signal, int, S_IRUGO);
 #ifndef MSND_CLASSIC
+static unsigned int nr_mpu_io, nr_mpu_irq;
+static unsigned int nr_ide_io0, nr_ide_io1, nr_ide_irq, nr_joystick_io;
 module_param_array(digital, int, NULL, S_IRUGO);
 module_param_array(cfg, long, NULL, S_IRUGO);
 module_param_array(reset, int, 0, S_IRUGO);
-module_param_array(mpu_io, long, NULL, S_IRUGO);
-module_param_array(mpu_irq, int, NULL, S_IRUGO);
-module_param_array(ide_io0, long, NULL, S_IRUGO);
-module_param_array(ide_io1, long, NULL, S_IRUGO);
-module_param_array(ide_irq, int, NULL, S_IRUGO);
-module_param_array(joystick_io, long, NULL, S_IRUGO);
+module_param_array(mpu_io, long, &nr_mpu_io, S_IRUGO);
+module_param_array(mpu_irq, int, &nr_mpu_irq, S_IRUGO);
+module_param_array(ide_io0, long, &nr_ide_io0, S_IRUGO);
+module_param_array(ide_io1, long, &nr_ide_io1, S_IRUGO);
+module_param_array(ide_irq, int, &nr_ide_irq, S_IRUGO);
+module_param_array(joystick_io, long, &nr_joystick_io, S_IRUGO);
 #endif
 
 
@@ -1211,6 +1214,17 @@ static struct pnp_card_driver msnd_pnpc_driver = {
 static int __init snd_msnd_init(void)
 {
 	int err;
+
+	if ((nr_io > 0 || nr_irq > 0 || nr_mem > 0
+#ifndef MSND_CLASSIC
+	     || nr_mpu_io > 0 || nr_mpu_irq > 0 ||
+	     nr_ide_io0 > 0 || nr_ide_io1 > 0 || nr_ide_irq > 0 ||
+	     nr_joystick_io > 0
+#endif
+	     ) && kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
 
 	err = isa_register_driver(&snd_msnd_driver, SNDRV_CARDS);
 #ifdef CONFIG_PNP

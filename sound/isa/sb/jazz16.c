@@ -34,6 +34,7 @@ MODULE_SUPPORTED_DEVICE("{{Media Vision ??? },"
 MODULE_AUTHOR("Krzysztof Helt <krzysztof.h1@wp.pl>");
 MODULE_LICENSE("GPL");
 
+static unsigned int nr_port, nr_mpu_port, nr_irq, nr_mpu_irq, nr_dma8, nr_dma16;
 static int index[SNDRV_CARDS] = SNDRV_DEFAULT_IDX;	/* Index 0-MAX */
 static char *id[SNDRV_CARDS] = SNDRV_DEFAULT_STR;	/* ID for this card */
 static bool enable[SNDRV_CARDS] = SNDRV_DEFAULT_ENABLE;	/* Enable this card */
@@ -50,17 +51,17 @@ module_param_array(id, charp, NULL, 0444);
 MODULE_PARM_DESC(id, "ID string for Media Vision Jazz16 based soundcard.");
 module_param_array(enable, bool, NULL, 0444);
 MODULE_PARM_DESC(enable, "Enable Media Vision Jazz16 based soundcard.");
-module_param_array(port, long, NULL, 0444);
+module_param_array(port, long, &nr_port, 0444);
 MODULE_PARM_DESC(port, "Port # for jazz16 driver.");
-module_param_array(mpu_port, long, NULL, 0444);
+module_param_array(mpu_port, long, &nr_mpu_port, 0444);
 MODULE_PARM_DESC(mpu_port, "MPU-401 port # for jazz16 driver.");
-module_param_array(irq, int, NULL, 0444);
+module_param_array(irq, int, &nr_irq, 0444);
 MODULE_PARM_DESC(irq, "IRQ # for jazz16 driver.");
-module_param_array(mpu_irq, int, NULL, 0444);
+module_param_array(mpu_irq, int, &nr_mpu_irq, 0444);
 MODULE_PARM_DESC(mpu_irq, "MPU-401 IRQ # for jazz16 driver.");
-module_param_array(dma8, int, NULL, 0444);
+module_param_array(dma8, int, &nr_dma8, 0444);
 MODULE_PARM_DESC(dma8, "DMA8 # for jazz16 driver.");
-module_param_array(dma16, int, NULL, 0444);
+module_param_array(dma16, int, &nr_dma16, 0444);
 MODULE_PARM_DESC(dma16, "DMA16 # for jazz16 driver.");
 
 #define SB_JAZZ16_WAKEUP	0xaf
@@ -387,4 +388,8 @@ static struct isa_driver snd_jazz16_driver = {
 	},
 };
 
+#undef module_lockdown_check
+#define module_lockdown_check() \
+	(nr_port > 0 || nr_mpu_port > 0 || \
+	 nr_irq > 0 || nr_mpu_irq > 0 || nr_dma8 > 0 || nr_dma16)
 module_isa_driver(snd_jazz16_driver, SNDRV_CARDS);

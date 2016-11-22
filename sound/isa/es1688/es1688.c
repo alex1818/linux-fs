@@ -48,6 +48,8 @@ MODULE_SUPPORTED_DEVICE("{{ESS,ES688 PnP AudioDrive,pnp:ESS0100},"
 
 MODULE_ALIAS("snd_es968");
 
+static unsigned int nr_port, nr_irq, nr_fm_port;
+static unsigned int nr_mpu_port, nr_mpu_irq, nr_dma8;
 static int index[SNDRV_CARDS] = SNDRV_DEFAULT_IDX;	/* Index 0-MAX */
 static char *id[SNDRV_CARDS] = SNDRV_DEFAULT_STR;	/* ID for this card */
 #ifdef CONFIG_PNP
@@ -71,17 +73,17 @@ module_param_array(isapnp, bool, NULL, 0444);
 MODULE_PARM_DESC(isapnp, "PnP detection for specified soundcard.");
 #endif
 MODULE_PARM_DESC(enable, "Enable " CRD_NAME " soundcard.");
-module_param_array(port, long, NULL, 0444);
+module_param_array(port, long, &nr_port, 0444);
 MODULE_PARM_DESC(port, "Port # for " CRD_NAME " driver.");
-module_param_array(mpu_port, long, NULL, 0444);
+module_param_array(mpu_port, long, &nr_mpu_port, 0444);
 MODULE_PARM_DESC(mpu_port, "MPU-401 port # for " CRD_NAME " driver.");
-module_param_array(irq, int, NULL, 0444);
-module_param_array(fm_port, long, NULL, 0444);
+module_param_array(irq, int, &nr_irq, 0444);
+module_param_array(fm_port, long, &nr_fm_port, 0444);
 MODULE_PARM_DESC(fm_port, "FM port # for ES1688 driver.");
 MODULE_PARM_DESC(irq, "IRQ # for " CRD_NAME " driver.");
-module_param_array(mpu_irq, int, NULL, 0444);
+module_param_array(mpu_irq, int, &nr_mpu_irq, 0444);
 MODULE_PARM_DESC(mpu_irq, "MPU-401 IRQ # for " CRD_NAME " driver.");
-module_param_array(dma8, int, NULL, 0444);
+module_param_array(dma8, int, &nr_dma8, 0444);
 MODULE_PARM_DESC(dma8, "8-bit DMA # for " CRD_NAME " driver.");
 
 #ifdef CONFIG_PNP
@@ -344,6 +346,14 @@ static struct pnp_card_driver es968_pnpc_driver = {
 
 static int __init alsa_card_es1688_init(void)
 {
+	if ((nr_port > 0 || nr_irq > 0 ||
+	     nr_fm_port > 0 || nr_dma8 > 0 ||
+	     nr_mpu_port > 0 || nr_mpu_irq > 0) &&
+	    kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
+
 #ifdef CONFIG_PNP
 	pnp_register_card_driver(&es968_pnpc_driver);
 	if (snd_es968_pnp_is_probed)

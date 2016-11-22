@@ -36,6 +36,10 @@ MODULE_DESCRIPTION("Turtle Beach Wavefront");
 MODULE_LICENSE("GPL");
 MODULE_SUPPORTED_DEVICE("{{Turtle Beach,Maui/Tropez/Tropez+}}");
 
+static unsigned int nr_cs4232_pcm_port, nr_cs4232_pcm_irq;
+static unsigned int nr_cs4232_mpu_port, nr_cs4232_mpu_irq;
+static unsigned int nr_ics2115_port, nr_ics2115_irq;
+static unsigned int nr_fm_port, nr_dma1, nr_dma2;
 static int index[SNDRV_CARDS] = SNDRV_DEFAULT_IDX;	    /* Index 0-MAX */
 static char *id[SNDRV_CARDS] = SNDRV_DEFAULT_STR;	    /* ID for this card */
 static bool enable[SNDRV_CARDS] = SNDRV_DEFAULT_ENABLE;	    /* Enable this card */
@@ -63,23 +67,23 @@ MODULE_PARM_DESC(enable, "Enable WaveFront soundcard.");
 module_param_array(isapnp, bool, NULL, 0444);
 MODULE_PARM_DESC(isapnp, "ISA PnP detection for WaveFront soundcards.");
 #endif
-module_param_array(cs4232_pcm_port, long, NULL, 0444);
+module_param_array(cs4232_pcm_port, long, &nr_cs4232_pcm_port, 0444);
 MODULE_PARM_DESC(cs4232_pcm_port, "Port # for CS4232 PCM interface.");
-module_param_array(cs4232_pcm_irq, int, NULL, 0444);
+module_param_array(cs4232_pcm_irq, int, &nr_cs4232_pcm_irq, 0444);
 MODULE_PARM_DESC(cs4232_pcm_irq, "IRQ # for CS4232 PCM interface.");
-module_param_array(dma1, int, NULL, 0444);
+module_param_array(dma1, int, &nr_dma1, 0444);
 MODULE_PARM_DESC(dma1, "DMA1 # for CS4232 PCM interface.");
-module_param_array(dma2, int, NULL, 0444);
+module_param_array(dma2, int, &nr_dma2, 0444);
 MODULE_PARM_DESC(dma2, "DMA2 # for CS4232 PCM interface.");
-module_param_array(cs4232_mpu_port, long, NULL, 0444);
+module_param_array(cs4232_mpu_port, long, &nr_cs4232_mpu_port, 0444);
 MODULE_PARM_DESC(cs4232_mpu_port, "port # for CS4232 MPU-401 interface.");
-module_param_array(cs4232_mpu_irq, int, NULL, 0444);
+module_param_array(cs4232_mpu_irq, int, &nr_cs4232_mpu_irq, 0444);
 MODULE_PARM_DESC(cs4232_mpu_irq, "IRQ # for CS4232 MPU-401 interface.");
-module_param_array(ics2115_irq, int, NULL, 0444);
+module_param_array(ics2115_irq, int, &nr_ics2115_irq, 0444);
 MODULE_PARM_DESC(ics2115_irq, "IRQ # for ICS2115.");
-module_param_array(ics2115_port, long, NULL, 0444);
+module_param_array(ics2115_port, long, &nr_ics2115_port, 0444);
 MODULE_PARM_DESC(ics2115_port, "Port # for ICS2115.");
-module_param_array(fm_port, long, NULL, 0444);
+module_param_array(fm_port, long, &nr_fm_port, 0444);
 MODULE_PARM_DESC(fm_port, "FM port #.");
 module_param_array(use_cs4232_midi, bool, NULL, 0444);
 MODULE_PARM_DESC(use_cs4232_midi, "Use CS4232 MPU-401 interface (inaccessibly located inside your computer)");
@@ -652,6 +656,15 @@ static struct pnp_card_driver wavefront_pnpc_driver = {
 static int __init alsa_card_wavefront_init(void)
 {
 	int err;
+
+	if ((nr_cs4232_pcm_port > 0 || nr_cs4232_pcm_irq > 0 ||
+	     nr_cs4232_mpu_port > 0 || nr_cs4232_mpu_irq > 0 ||
+	     nr_ics2115_port > 0 || nr_ics2115_irq > 0 ||
+	     nr_fm_port > 0 || nr_dma1 > 0 || nr_dma2 > 0) &&
+	    kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
 
 	err = isa_register_driver(&snd_wavefront_driver, SNDRV_CARDS);
 #ifdef CONFIG_PNP

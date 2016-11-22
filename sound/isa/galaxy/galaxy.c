@@ -44,6 +44,8 @@ MODULE_PARM_DESC(id, "ID string for " CRD_NAME " soundcard.");
 module_param_array(enable, bool, NULL, 0444);
 MODULE_PARM_DESC(enable, "Enable " CRD_NAME " soundcard.");
 
+static unsigned int nr_port, nr_wss_port, nr_mpu_port, nr_fm_port;
+static unsigned int nr_irq, nr_mpu_irq, nr_dma1, nr_dma2;
 static long port[SNDRV_CARDS] = SNDRV_DEFAULT_PORT;
 static long wss_port[SNDRV_CARDS] = SNDRV_DEFAULT_PORT;
 static long mpu_port[SNDRV_CARDS] = SNDRV_DEFAULT_PORT;
@@ -53,21 +55,21 @@ static int mpu_irq[SNDRV_CARDS] = SNDRV_DEFAULT_IRQ;
 static int dma1[SNDRV_CARDS] = SNDRV_DEFAULT_DMA;
 static int dma2[SNDRV_CARDS] = SNDRV_DEFAULT_DMA;
 
-module_param_array(port, long, NULL, 0444);
+module_param_array(port, long, &nr_port, 0444);
 MODULE_PARM_DESC(port, "Port # for " CRD_NAME " driver.");
-module_param_array(wss_port, long, NULL, 0444);
+module_param_array(wss_port, long, &nr_wss_port, 0444);
 MODULE_PARM_DESC(wss_port, "WSS port # for " CRD_NAME " driver.");
-module_param_array(mpu_port, long, NULL, 0444);
+module_param_array(mpu_port, long, &nr_mpu_port, 0444);
 MODULE_PARM_DESC(mpu_port, "MPU-401 port # for " CRD_NAME " driver.");
-module_param_array(fm_port, long, NULL, 0444);
+module_param_array(fm_port, long, &nr_fm_port, 0444);
 MODULE_PARM_DESC(fm_port, "FM port # for " CRD_NAME " driver.");
-module_param_array(irq, int, NULL, 0444);
+module_param_array(irq, int, &nr_irq, 0444);
 MODULE_PARM_DESC(irq, "IRQ # for " CRD_NAME " driver.");
-module_param_array(mpu_irq, int, NULL, 0444);
+module_param_array(mpu_irq, int, &nr_mpu_irq, 0444);
 MODULE_PARM_DESC(mpu_irq, "MPU-401 IRQ # for " CRD_NAME " driver.");
-module_param_array(dma1, int, NULL, 0444);
+module_param_array(dma1, int, &nr_dma1, 0444);
 MODULE_PARM_DESC(dma1, "Playback DMA # for " CRD_NAME " driver.");
-module_param_array(dma2, int, NULL, 0444);
+module_param_array(dma2, int, &nr_dma2, 0444);
 MODULE_PARM_DESC(dma2, "Capture DMA # for " CRD_NAME " driver.");
 
 /*
@@ -634,4 +636,9 @@ static struct isa_driver snd_galaxy_driver = {
 	}
 };
 
+#undef module_lockdown_check
+#define module_lockdown_check() \
+	(nr_port > 0 || nr_wss_port > 0 || nr_mpu_port > 0 || \
+	 nr_fm_port > 0 || nr_irq > 0 || nr_mpu_irq > 0 ||    \
+	 nr_dma1 > 0 || nr_dma2 > 0)
 module_isa_driver(snd_galaxy_driver, SNDRV_CARDS);

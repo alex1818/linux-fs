@@ -67,6 +67,9 @@ MODULE_DESCRIPTION("C-Media CMI8330/CMI8329");
 MODULE_LICENSE("GPL");
 MODULE_SUPPORTED_DEVICE("{{C-Media,CMI8330,isapnp:{CMI0001,@@@0001,@X@0001}}}");
 
+static unsigned int nr_sbport, nr_sbirq, nr_sbdma8, nr_sbdma16;
+static unsigned int nr_wssport, nr_wssirq, nr_wssdma;
+static unsigned int nr_fmport, nr_mpuport, nr_mpuirq;
 static int index[SNDRV_CARDS] = SNDRV_DEFAULT_IDX;
 static char *id[SNDRV_CARDS] = SNDRV_DEFAULT_STR;
 static bool enable[SNDRV_CARDS] = SNDRV_DEFAULT_ENABLE_ISAPNP;
@@ -95,27 +98,27 @@ module_param_array(isapnp, bool, NULL, 0444);
 MODULE_PARM_DESC(isapnp, "PnP detection for specified soundcard.");
 #endif
 
-module_param_array(sbport, long, NULL, 0444);
+module_param_array(sbport, long, &nr_sbport, 0444);
 MODULE_PARM_DESC(sbport, "Port # for CMI8330/CMI8329 SB driver.");
-module_param_array(sbirq, int, NULL, 0444);
+module_param_array(sbirq, int, &nr_sbirq, 0444);
 MODULE_PARM_DESC(sbirq, "IRQ # for CMI8330/CMI8329 SB driver.");
-module_param_array(sbdma8, int, NULL, 0444);
+module_param_array(sbdma8, int, &nr_sbdma8, 0444);
 MODULE_PARM_DESC(sbdma8, "DMA8 for CMI8330/CMI8329 SB driver.");
-module_param_array(sbdma16, int, NULL, 0444);
+module_param_array(sbdma16, int, &nr_sbdma16, 0444);
 MODULE_PARM_DESC(sbdma16, "DMA16 for CMI8330/CMI8329 SB driver.");
 
-module_param_array(wssport, long, NULL, 0444);
+module_param_array(wssport, long, &nr_wssport, 0444);
 MODULE_PARM_DESC(wssport, "Port # for CMI8330/CMI8329 WSS driver.");
-module_param_array(wssirq, int, NULL, 0444);
+module_param_array(wssirq, int, &nr_wssirq, 0444);
 MODULE_PARM_DESC(wssirq, "IRQ # for CMI8330/CMI8329 WSS driver.");
-module_param_array(wssdma, int, NULL, 0444);
+module_param_array(wssdma, int, &nr_wssdma, 0444);
 MODULE_PARM_DESC(wssdma, "DMA for CMI8330/CMI8329 WSS driver.");
 
-module_param_array(fmport, long, NULL, 0444);
+module_param_array(fmport, long, &nr_fmport, 0444);
 MODULE_PARM_DESC(fmport, "FM port # for CMI8330/CMI8329 driver.");
-module_param_array(mpuport, long, NULL, 0444);
+module_param_array(mpuport, long, &nr_mpuport, 0444);
 MODULE_PARM_DESC(mpuport, "MPU-401 port # for CMI8330/CMI8329 driver.");
-module_param_array(mpuirq, int, NULL, 0444);
+module_param_array(mpuirq, int, &nr_mpuirq, 0444);
 MODULE_PARM_DESC(mpuirq, "IRQ # for CMI8330/CMI8329 MPU-401 port.");
 #ifdef CONFIG_PNP
 static int isa_registered;
@@ -749,6 +752,14 @@ static struct pnp_card_driver cmi8330_pnpc_driver = {
 static int __init alsa_card_cmi8330_init(void)
 {
 	int err;
+
+	if ((nr_sbport > 0 || nr_sbirq > 0 || nr_sbdma8 > 0 || nr_sbdma16 > 0 ||
+	     nr_wssport > 0 || nr_wssirq > 0 || nr_wssdma > 0 ||
+	     nr_fmport > 0 || nr_mpuport > 0 || nr_mpuirq > 0) &&
+	    kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
 
 	err = isa_register_driver(&snd_cmi8330_driver, SNDRV_CARDS);
 #ifdef CONFIG_PNP

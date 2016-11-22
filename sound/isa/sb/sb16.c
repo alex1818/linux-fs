@@ -66,6 +66,11 @@ MODULE_SUPPORTED_DEVICE("{{Creative Labs,SB AWE 32},"
 #define SNDRV_SBAWE_EMU8000
 #endif
 
+static unsigned int nr_port, nr_mpu_port, nr_fm_port;
+#ifdef SNDRV_SBAWE_EMU8000
+static unsigned int nr_awe_port;
+#endif
+static unsigned int nr_irq, nr_mpu_irq, nr_dma8, nr_dma16;
 static int index[SNDRV_CARDS] = SNDRV_DEFAULT_IDX;	/* Index 0-MAX */
 static char *id[SNDRV_CARDS] = SNDRV_DEFAULT_STR;	/* ID for this card */
 static bool enable[SNDRV_CARDS] = SNDRV_DEFAULT_ENABLE_ISAPNP; /* Enable this card */
@@ -99,21 +104,21 @@ MODULE_PARM_DESC(enable, "Enable SoundBlaster 16 soundcard.");
 module_param_array(isapnp, bool, NULL, 0444);
 MODULE_PARM_DESC(isapnp, "PnP detection for specified soundcard.");
 #endif
-module_param_array(port, long, NULL, 0444);
+module_param_array(port, long, &nr_port, 0444);
 MODULE_PARM_DESC(port, "Port # for SB16 driver.");
-module_param_array(mpu_port, long, NULL, 0444);
+module_param_array(mpu_port, long, &nr_mpu_port, 0444);
 MODULE_PARM_DESC(mpu_port, "MPU-401 port # for SB16 driver.");
-module_param_array(fm_port, long, NULL, 0444);
+module_param_array(fm_port, long, &nr_fm_port, 0444);
 MODULE_PARM_DESC(fm_port, "FM port # for SB16 PnP driver.");
 #ifdef SNDRV_SBAWE_EMU8000
-module_param_array(awe_port, long, NULL, 0444);
+module_param_array(awe_port, long, &nr_awe_port, 0444);
 MODULE_PARM_DESC(awe_port, "AWE port # for SB16 PnP driver.");
 #endif
-module_param_array(irq, int, NULL, 0444);
+module_param_array(irq, int, &nr_irq, 0444);
 MODULE_PARM_DESC(irq, "IRQ # for SB16 driver.");
-module_param_array(dma8, int, NULL, 0444);
+module_param_array(dma8, int, &nr_dma8, 0444);
 MODULE_PARM_DESC(dma8, "8-bit DMA # for SB16 driver.");
-module_param_array(dma16, int, NULL, 0444);
+module_param_array(dma16, int, &nr_dma16, 0444);
 MODULE_PARM_DESC(dma16, "16-bit DMA # for SB16 driver.");
 module_param_array(mic_agc, int, NULL, 0444);
 MODULE_PARM_DESC(mic_agc, "Mic Auto-Gain-Control switch.");
@@ -667,6 +672,16 @@ static struct pnp_card_driver sb16_pnpc_driver = {
 static int __init alsa_card_sb16_init(void)
 {
 	int err;
+
+	if ((nr_port > 0 || nr_mpu_port > 0 || nr_fm_port > 0 ||
+	     nr_irq > 0 || nr_mpu_irq > 0 || nr_dma8 > 0 || nr_dma16 > 0
+#ifdef SNDRV_SBAWE_EMU8000
+	     || nr_awe_port > 0
+#endif
+	     ) && kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
 
 	err = isa_register_driver(&snd_sb16_isa_driver, SNDRV_CARDS);
 #ifdef CONFIG_PNP

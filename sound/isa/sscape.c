@@ -47,6 +47,7 @@ MODULE_FIRMWARE("sndscape.co3");
 MODULE_FIRMWARE("sndscape.co4");
 MODULE_FIRMWARE("scope.cod");
 
+static unsigned int nr_port, nr_wss_port, nr_irq, nr_mpu_irq, nr_dma, nr_dma2;
 static int index[SNDRV_CARDS] = SNDRV_DEFAULT_IDX;
 static char* id[SNDRV_CARDS] = SNDRV_DEFAULT_STR;
 static long port[SNDRV_CARDS] = SNDRV_DEFAULT_PORT;
@@ -63,22 +64,22 @@ MODULE_PARM_DESC(index, "Index number for SoundScape soundcard");
 module_param_array(id, charp, NULL, 0444);
 MODULE_PARM_DESC(id, "Description for SoundScape card");
 
-module_param_array(port, long, NULL, 0444);
+module_param_array(port, long, &nr_port, 0444);
 MODULE_PARM_DESC(port, "Port # for SoundScape driver.");
 
-module_param_array(wss_port, long, NULL, 0444);
+module_param_array(wss_port, long, &nr_wss_port, 0444);
 MODULE_PARM_DESC(wss_port, "WSS Port # for SoundScape driver.");
 
-module_param_array(irq, int, NULL, 0444);
+module_param_array(irq, int, &nr_irq, 0444);
 MODULE_PARM_DESC(irq, "IRQ # for SoundScape driver.");
 
-module_param_array(mpu_irq, int, NULL, 0444);
+module_param_array(mpu_irq, int, &nr_mpu_irq, 0444);
 MODULE_PARM_DESC(mpu_irq, "MPU401 IRQ # for SoundScape driver.");
 
-module_param_array(dma, int, NULL, 0444);
+module_param_array(dma, int, &nr_dma, 0444);
 MODULE_PARM_DESC(dma, "DMA # for SoundScape driver.");
 
-module_param_array(dma2, int, NULL, 0444);
+module_param_array(dma2, int, &nr_dma2, 0444);
 MODULE_PARM_DESC(dma2, "DMA2 # for SoundScape driver.");
 
 module_param_array(joystick, bool, NULL, 0444);
@@ -1327,6 +1328,12 @@ static struct pnp_card_driver sscape_pnpc_driver = {
 static int __init sscape_init(void)
 {
 	int err;
+
+	if ((nr_port > 0 || nr_wss_port > 0 || nr_irq > 0 || nr_mpu_irq > 0 ||
+	     nr_dma > 0 || nr_dma2 > 0) && kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
 
 	err = isa_register_driver(&snd_sscape_driver, SNDRV_CARDS);
 #ifdef CONFIG_PNP
