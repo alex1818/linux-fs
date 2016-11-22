@@ -69,6 +69,7 @@ static char *adaptor_names[] = {
 static int index[SNDRV_CARDS] = SNDRV_DEFAULT_IDX;	/* Index 0-MAX */
 static char *id[SNDRV_CARDS] = SNDRV_DEFAULT_STR;	/* ID for this card */
 static bool enable[SNDRV_CARDS] = SNDRV_DEFAULT_ENABLE; /* Enable this card */
+static unsigned int nr_port, nr_irq;
 static long port[SNDRV_CARDS] = SNDRV_DEFAULT_PORT; /* 0x3f8,0x2f8,0x3e8,0x2e8 */
 static int irq[SNDRV_CARDS] = SNDRV_DEFAULT_IRQ; 	/* 3,4,5,7,9,10,11,14,15 */
 static int speed[SNDRV_CARDS] = {[0 ... (SNDRV_CARDS - 1)] = 38400}; /* 9600,19200,38400,57600,115200 */
@@ -84,9 +85,9 @@ module_param_array(id, charp, NULL, 0444);
 MODULE_PARM_DESC(id, "ID string for Serial MIDI.");
 module_param_array(enable, bool, NULL, 0444);
 MODULE_PARM_DESC(enable, "Enable UART16550A chip.");
-module_param_array(port, long, NULL, 0444);
+module_param_array(port, long, &nr_port, 0444);
 MODULE_PARM_DESC(port, "Port # for UART16550A chip.");
-module_param_array(irq, int, NULL, 0444);
+module_param_array(irq, int, &nr_irq, 0444);
 MODULE_PARM_DESC(irq, "IRQ # for UART16550A chip.");
 module_param_array(speed, int, NULL, 0444);
 MODULE_PARM_DESC(speed, "Speed in bauds.");
@@ -1006,6 +1007,11 @@ static void snd_serial_unregister_all(void)
 static int __init alsa_card_serial_init(void)
 {
 	int i, cards, err;
+
+	if ((nr_port > 0 || nr_irq > 0) && kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
 
 	if ((err = platform_driver_register(&snd_serial_driver)) < 0)
 		return err;

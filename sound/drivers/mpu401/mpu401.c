@@ -39,6 +39,7 @@ static bool enable[SNDRV_CARDS] = SNDRV_DEFAULT_ENABLE;	/* Enable this card */
 #ifdef CONFIG_PNP
 static bool pnp[SNDRV_CARDS] = {[0 ... (SNDRV_CARDS - 1)] = 1};
 #endif
+static unsigned int nr_port, nr_irq;
 static long port[SNDRV_CARDS] = SNDRV_DEFAULT_PORT;	/* MPU-401 port number */
 static int irq[SNDRV_CARDS] = SNDRV_DEFAULT_IRQ;	/* MPU-401 IRQ */
 static bool uart_enter[SNDRV_CARDS] = {[0 ... (SNDRV_CARDS - 1)] = 1};
@@ -53,9 +54,9 @@ MODULE_PARM_DESC(enable, "Enable MPU-401 device.");
 module_param_array(pnp, bool, NULL, 0444);
 MODULE_PARM_DESC(pnp, "PnP detection for MPU-401 device.");
 #endif
-module_param_array(port, long, NULL, 0444);
+module_param_array(port, long, &nr_port, 0444);
 MODULE_PARM_DESC(port, "Port # for MPU-401 device.");
-module_param_array(irq, int, NULL, 0444);
+module_param_array(irq, int, &nr_irq, 0444);
 MODULE_PARM_DESC(irq, "IRQ # for MPU-401 device.");
 module_param_array(uart_enter, bool, NULL, 0444);
 MODULE_PARM_DESC(uart_enter, "Issue UART_ENTER command at open.");
@@ -241,6 +242,11 @@ static void snd_mpu401_unregister_all(void)
 static int __init alsa_card_mpu401_init(void)
 {
 	int i, err;
+
+	if ((nr_port > 0 || nr_irq > 0) && kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
 
 	if ((err = platform_driver_register(&snd_mpu401_driver)) < 0)
 		return err;

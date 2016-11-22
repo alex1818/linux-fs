@@ -762,6 +762,13 @@ static int __init alsa_card_mtpav_init(void)
 {
 	int err;
 
+	if ((port != MTPAV_IOBASE || irq != MTPAV_IRQ ||
+	     hwports != MTPAV_MAX_PORTS) &&
+	    kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
+
 	if ((err = platform_driver_register(&snd_mtpav_driver)) < 0)
 		return err;
 
