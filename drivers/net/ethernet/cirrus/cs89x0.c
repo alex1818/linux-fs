@@ -1765,6 +1765,11 @@ int __init init_module(void)
 	struct net_local *lp;
 	int ret = 0;
 
+	if ((io || irq || dma) && kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
+
 #if DEBUGGING
 	net_debug = debug;
 #else

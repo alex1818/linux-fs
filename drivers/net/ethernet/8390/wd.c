@@ -499,12 +499,13 @@ wd_close(struct net_device *dev)
 #ifdef MODULE
 #define MAX_WD_CARDS	4	/* Max number of wd cards per module */
 static struct net_device *dev_wd[MAX_WD_CARDS];
+static int nr_io;
 static int io[MAX_WD_CARDS];
 static int irq[MAX_WD_CARDS];
 static int mem[MAX_WD_CARDS];
 static int mem_end[MAX_WD_CARDS];	/* for non std. mem size */
 
-module_param_array(io, int, NULL, 0);
+module_param_array(io, int, &nr_io, 0);
 module_param_array(irq, int, NULL, 0);
 module_param_array(mem, int, NULL, 0);
 module_param_array(mem_end, int, NULL, 0);
@@ -524,6 +525,11 @@ int __init init_module(void)
 {
 	struct net_device *dev;
 	int this_dev, found = 0;
+
+	if (nr_io > 0 && kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
 
 	for (this_dev = 0; this_dev < MAX_WD_CARDS; this_dev++) {
 		if (io[this_dev] == 0)  {

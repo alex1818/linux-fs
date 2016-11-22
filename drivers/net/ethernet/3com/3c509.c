@@ -177,6 +177,7 @@ static struct net_device *el3_devs[EL3_MAX_CARDS];
 
 /* Parameters that may be passed into the module. */
 static int debug = -1;
+static unsigned int nr_irq;
 static int irq[] = {-1, -1, -1, -1, -1, -1, -1, -1};
 /* Maximum events (Rx packets, etc.) to handle at each interrupt. */
 static int max_interrupt_work = 10;
@@ -1369,7 +1370,7 @@ el3_resume(struct device *pdev)
 #endif /* CONFIG_PM */
 
 module_param(debug,int, 0);
-module_param_array(irq, int, NULL, 0);
+module_param_array(irq, int, &nr_irq, 0);
 module_param(max_interrupt_work, int, 0);
 MODULE_PARM_DESC(debug, "debug level (0-6)");
 MODULE_PARM_DESC(irq, "IRQ number(s) (assigned)");
@@ -1384,6 +1385,11 @@ MODULE_LICENSE("GPL");
 static int __init el3_init_module(void)
 {
 	int ret = 0;
+
+	if (nr_irq > 0 && kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
 
 	if (debug >= 0)
 		el3_debug = debug;

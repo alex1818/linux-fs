@@ -2967,8 +2967,9 @@ MODULE_DESCRIPTION("HP CASCADE Architecture Driver for 100VG-AnyLan Network Adap
 #if defined(MODULE) && defined(CONFIG_ISA)
 #define HP100_DEVICES 5
 /* Parameters set by insmod */
+static int hp100_nr_ports;
 static int hp100_port[HP100_DEVICES] = { 0, [1 ... (HP100_DEVICES-1)] = -1 };
-module_param_array(hp100_port, int, NULL, 0);
+module_param_array(hp100_port, int, &hp100_nr_ports, 0);
 
 /* List of devices */
 static struct net_device *hp100_devlist[HP100_DEVICES];
@@ -2977,6 +2978,11 @@ static int __init hp100_isa_init(void)
 {
 	struct net_device *dev;
 	int i, err, cards = 0;
+
+	if (hp100_nr_ports > 0 && kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
 
 	/* Don't autoprobe ISA bus */
 	if (hp100_port[0] == 0)

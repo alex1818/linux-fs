@@ -3330,6 +3330,11 @@ static int __init vortex_init(void)
 {
 	int pci_rc, eisa_rc;
 
+	if ((compaq_ioaddr || compaq_irq) && kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
+
 	pci_rc = pci_register_driver(&vortex_driver);
 	eisa_rc = vortex_eisa_init();
 

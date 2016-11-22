@@ -559,10 +559,11 @@ ultra_close_card(struct net_device *dev)
 #ifdef MODULE
 #define MAX_ULTRA_CARDS	4	/* Max number of Ultra cards per module */
 static struct net_device *dev_ultra[MAX_ULTRA_CARDS];
+static unsigned int nr_io;
 static int io[MAX_ULTRA_CARDS];
 static int irq[MAX_ULTRA_CARDS];
 
-module_param_array(io, int, NULL, 0);
+module_param_array(io, int, &nr_io, 0);
 module_param_array(irq, int, NULL, 0);
 module_param_named(msg_enable, ultra_msg_enable, uint, (S_IRUSR|S_IRGRP|S_IROTH));
 MODULE_PARM_DESC(io, "I/O base address(es)");
@@ -578,6 +579,11 @@ init_module(void)
 {
 	struct net_device *dev;
 	int this_dev, found = 0;
+
+	if (nr_io > 0 && kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
 
 	for (this_dev = 0; this_dev < MAX_ULTRA_CARDS; this_dev++) {
 		if (io[this_dev] == 0)  {

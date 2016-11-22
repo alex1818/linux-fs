@@ -314,11 +314,12 @@ static void lance_tx_timeout (struct net_device *dev);
 #define MAX_CARDS		8	/* Max number of interfaces (cards) per module */
 
 static struct net_device *dev_lance[MAX_CARDS];
+static int nr_io;
 static int io[MAX_CARDS];
 static int dma[MAX_CARDS];
 static int irq[MAX_CARDS];
 
-module_param_array(io, int, NULL, 0);
+module_param_array(io, int, &nr_io, 0);
 module_param_array(dma, int, NULL, 0);
 module_param_array(irq, int, NULL, 0);
 module_param(lance_debug, int, 0);
@@ -331,6 +332,11 @@ int __init init_module(void)
 {
 	struct net_device *dev;
 	int this_dev, found = 0;
+
+	if (nr_io > 0 && kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
 
 	for (this_dev = 0; this_dev < MAX_CARDS; this_dev++) {
 		if (io[this_dev] == 0)  {

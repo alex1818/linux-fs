@@ -74,8 +74,9 @@ static int bad[MAX_NE_CARDS];
 static u32 ne_msg_enable;
 
 #ifdef MODULE
-module_param_array(io, int, NULL, 0);
-module_param_array(irq, int, NULL, 0);
+static unsigned int nr_io, nr_irq;
+module_param_array(io, int, &nr_io, 0);
+module_param_array(irq, int, &nr_irq, 0);
 module_param_array(bad, int, NULL, 0);
 module_param_named(msg_enable, ne_msg_enable, uint, (S_IRUSR|S_IRGRP|S_IROTH));
 MODULE_PARM_DESC(io, "I/O base address(es),required");
@@ -943,6 +944,12 @@ static void __init ne_add_devices(void)
 int __init init_module(void)
 {
 	int retval;
+
+	if ((nr_io > 0 || nr_irq > 0) && kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
+
 	ne_add_devices();
 	retval = platform_driver_probe(&ne_driver, ne_drv_probe);
 	if (retval) {

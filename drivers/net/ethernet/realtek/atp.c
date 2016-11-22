@@ -45,6 +45,7 @@ static int max_interrupt_work = 15;
 
 #define NUM_UNITS 2
 /* The standard set of ISA module parameters. */
+static unsigned int nr_io, nr_irq;
 static int io[NUM_UNITS];
 static int irq[NUM_UNITS];
 static int xcvr[NUM_UNITS]; 			/* The data transfer mode. */
@@ -151,8 +152,8 @@ MODULE_LICENSE("GPL");
 
 module_param(max_interrupt_work, int, 0);
 module_param(debug, int, 0);
-module_param_array(io, int, NULL, 0);
-module_param_array(irq, int, NULL, 0);
+module_param_array(io, int, &nr_io, 0);
+module_param_array(irq, int, &nr_irq, 0);
 module_param_array(xcvr, int, NULL, 0);
 MODULE_PARM_DESC(max_interrupt_work, "ATP maximum events handled per interrupt");
 MODULE_PARM_DESC(debug, "ATP debug level (0-7)");
@@ -860,7 +861,13 @@ static void set_rx_mode(struct net_device *dev)
 	write_reg_high(ioaddr, CMR2, lp->addr_mode);
 }
 
-static int __init atp_init_module(void) {
+static int __init atp_init_module(void)
+{
+	if ((nr_io > 0 || nr_irq > 0) && kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
+
 	if (debug)					/* Emit version even if no cards detected. */
 		printk(KERN_INFO "%s", version);
 	return atp_init();
