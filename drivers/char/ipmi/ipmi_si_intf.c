@@ -3725,6 +3725,12 @@ static int init_ipmi_si(void)
 	struct smi_info *e;
 	enum ipmi_addr_src type = SI_INVALID;
 
+	if ((num_addrs || num_ports || num_irqs) &&
+	    kernel_is_locked_down()) {
+		pr_err(PFX "Kernel is locked down\n");
+		return -EPERM;
+	}
+
 	if (initialized)
 		return 0;
 	initialized = 1;

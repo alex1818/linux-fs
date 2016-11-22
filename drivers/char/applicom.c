@@ -192,6 +192,11 @@ static int __init applicom_init(void)
 
 	printk(KERN_INFO "Applicom driver: $Id: ac.c,v 1.30 2000/03/22 16:03:57 dwmw2 Exp $\n");
 
+	if ((irq || mem) && kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
+
 	/* No mem and irq given - check for a PCI card */
 
 	while ( (dev = pci_get_class(PCI_CLASS_OTHERS << 16, dev))) {

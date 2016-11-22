@@ -572,6 +572,11 @@ static int __init mwave_init(void)
 	int retval = 0;
 	pMWAVE_DEVICE_DATA pDrvData = &mwave_s_mdd;
 
+	if (kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
+
 	PRINTK_1(TRACE_MWAVE, "mwavedd::mwave_init entry\n");
 
 	memset(&mwave_s_mdd, 0, sizeof(MWAVE_DEVICE_DATA));
