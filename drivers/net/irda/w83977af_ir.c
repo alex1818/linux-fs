@@ -70,6 +70,7 @@ static int  qos_mtt_bits = 0x07;   /* 1 ms or more */
 
 #define CHIP_IO_EXTENT 8
 
+static unsigned int nr_io, nr_irq;
 static unsigned int io[] = { 0x180, ~0, ~0, ~0 };
 #ifdef CONFIG_ARCH_NETWINDER             /* Adjust to NetWinder differences */
 static unsigned int irq[] = { 6, 0, 0, 0 };
@@ -109,6 +110,12 @@ static int  w83977af_net_ioctl(struct net_device *dev, struct ifreq *rq, int cmd
 static int __init w83977af_init(void)
 {
         int i;
+
+	if ((nr_io > 0 || nr_irq > 0) &&
+	    kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
 
 	for (i=0; i < ARRAY_SIZE(dev_self) && io[i] < 2000; i++) {
 		if (w83977af_open(i, io[i], irq[i], dma[i]) == 0)
@@ -1264,9 +1271,9 @@ MODULE_LICENSE("GPL");
 
 module_param(qos_mtt_bits, int, 0);
 MODULE_PARM_DESC(qos_mtt_bits, "Mimimum Turn Time");
-module_param_array(io, int, NULL, 0);
+module_param_array(io, int, &nr_io, 0);
 MODULE_PARM_DESC(io, "Base I/O addresses");
-module_param_array(irq, int, NULL, 0);
+module_param_array(irq, int, &nr_irq, 0);
 MODULE_PARM_DESC(irq, "IRQ lines");
 
 /*

@@ -463,6 +463,13 @@ static int __init smsc_ircc_init(void)
 
 	pr_debug("%s\n", __func__);
 
+	if ((ircc_fir || ircc_sir || ircc_cfg ||
+	     ircc_dma != DMA_INVAL || ircc_irq != IRQ_INVAL) &&
+	    kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
+
 	ret = platform_driver_register(&smsc_ircc_driver);
 	if (ret) {
 		net_err_ratelimited("%s, Can't register driver!\n",

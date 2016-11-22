@@ -91,6 +91,7 @@ static int qos_mtt_bits = 0x07;  /* 1 ms or more */
 static int dongle_id;
 
 /* Use BIOS settions by default, but user may supply module parameters */
+static unsigned int nr_io, nr_irq, nr_dma;
 static unsigned int io[]  = { ~0, ~0, ~0, ~0, ~0 };
 static unsigned int irq[] = {  0,  0,  0,  0,  0 };
 static unsigned int dma[] = {  0,  0,  0,  0,  0 };
@@ -208,6 +209,12 @@ static int __init nsc_ircc_init(void)
 	int cfg, id;
 	int reg;
 	int i = 0;
+
+	if ((nr_io > 0 || nr_irq > 0 || nr_dma > 0) &&
+	    kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
 
 	ret = platform_driver_register(&nsc_ircc_driver);
         if (ret) {
@@ -2396,11 +2403,11 @@ MODULE_LICENSE("GPL");
 
 module_param(qos_mtt_bits, int, 0);
 MODULE_PARM_DESC(qos_mtt_bits, "Minimum Turn Time");
-module_param_array(io, int, NULL, 0);
+module_param_array(io, int, &nr_io, 0);
 MODULE_PARM_DESC(io, "Base I/O addresses");
-module_param_array(irq, int, NULL, 0);
+module_param_array(irq, int, &nr_irq, 0);
 MODULE_PARM_DESC(irq, "IRQ lines");
-module_param_array(dma, int, NULL, 0);
+module_param_array(dma, int, &nr_dma, 0);
 MODULE_PARM_DESC(dma, "DMA channels");
 module_param(dongle_id, int, 0);
 MODULE_PARM_DESC(dongle_id, "Type-id of used dongle");
