@@ -1214,6 +1214,10 @@ void pci_unregister_driver(struct pci_driver *dev);
  * Helper macro for PCI drivers which do not do anything special in module
  * init/exit. This eliminates a lot of boilerplate. Each module may only
  * use this macro once, and calling it replaces module_init() and module_exit()
+ *
+ * module_lockdown_check() should be overridden if the module defines any
+ * parameters that change default ioport, iomem, irq or dma settings so that
+ * command line changes can be rejected if the kernel is locked down.
  */
 #define module_pci_driver(__pci_driver) \
 	module_driver(__pci_driver, pci_register_driver, \

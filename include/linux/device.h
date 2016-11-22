@@ -1332,6 +1332,14 @@ extern long sysfs_deprecated;
 #endif
 
 /**
+ * module_lockdown_check() - Called to check module params for lockdown mode
+ *
+ * This should return true if the module mustn't be allowed to load in lockdown
+ * mode and false otherwise.
+ */
+#define module_lockdown_check() (false)
+
+/**
  * module_driver() - Helper macro for drivers that don't do anything
  * special in module init/exit. This eliminates a lot of boilerplate.
  * Each module may only use this macro once, and calling it replaces
@@ -1344,10 +1352,18 @@ extern long sysfs_deprecated;
  *
  * Use this macro to construct bus specific macros for registering
  * drivers, and do not use it on its own.
+ *
+ * module_lockdown_check() should be overridden if the module defines any
+ * parameters that change default ioport, iomem, irq or dma settings so that
+ * command line changes can be rejected if the kernel is locked down.
  */
 #define module_driver(__driver, __register, __unregister, ...) \
 static int __init __driver##_init(void) \
 { \
+	if (module_lockdown_check() && kernel_is_locked_down()) {	\
+		pr_err("Kernel is locked down\n");			\
+		return -EPERM;						\
+	}								\
 	return __register(&(__driver) , ##__VA_ARGS__); \
 } \
 module_init(__driver##_init); \

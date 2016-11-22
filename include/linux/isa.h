@@ -45,10 +45,18 @@ static inline void isa_unregister_driver(struct isa_driver *d)
  * Helper macro for ISA drivers which do not do anything special in module
  * init/exit. This eliminates a lot of boilerplate code. Each module may only
  * use this macro once, and calling it replaces module_init and module_exit.
+ *
+ * module_lockdown_check() should be overridden if the module defines any
+ * parameters that change default ioport, iomem, irq or dma settings so that
+ * command line changes can be rejected if the kernel is locked down.
  */
 #define module_isa_driver(__isa_driver, __num_isa_dev) \
 static int __init __isa_driver##_init(void) \
 { \
+	if (module_lockdown_check() && kernel_is_locked_down()) {   \
+		pr_err("Kernel is locked down\n");		    \
+		return -EPERM;					    \
+	}							    \
 	return isa_register_driver(&(__isa_driver), __num_isa_dev); \
 } \
 module_init(__isa_driver##_init); \
