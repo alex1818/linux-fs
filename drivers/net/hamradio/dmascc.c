@@ -259,7 +259,7 @@ static void tm_isr(struct scc_priv *priv);
 
 
 /* Initialization variables */
-
+static unsigned int nr_io;
 static int io[MAX_NUM_DEVS] __initdata = { 0, };
 
 /* Beware! hw[] is also used in dmascc_exit(). */
@@ -274,7 +274,7 @@ static unsigned long rand;
 
 MODULE_AUTHOR("Klaus Kudielka");
 MODULE_DESCRIPTION("Driver for high-speed SCC boards");
-module_param_array(io, int, NULL, 0);
+module_param_array(io, int, &nr_io, 0);
 MODULE_LICENSE("GPL");
 
 static void __exit dmascc_exit(void)
@@ -313,6 +313,11 @@ static int __init dmascc_init(void)
 	unsigned t_val;
 	unsigned long time, start[MAX_NUM_DEVS], delay[MAX_NUM_DEVS],
 	    counting[MAX_NUM_DEVS];
+
+	if (nr_io > 0 && kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
 
 	/* Initialize random number generator */
 	rand = jiffies;

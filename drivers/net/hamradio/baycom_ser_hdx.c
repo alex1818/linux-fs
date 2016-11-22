@@ -636,15 +636,16 @@ static int baycom_ioctl(struct net_device *dev, struct ifreq *ifr,
 /*
  * command line settable parameters
  */
+static unsigned int nr_iobase, nr_irq;
 static char *mode[NR_PORTS] = { "ser12*", };
 static int iobase[NR_PORTS] = { 0x3f8, };
 static int irq[NR_PORTS] = { 4, };
 
 module_param_array(mode, charp, NULL, 0);
 MODULE_PARM_DESC(mode, "baycom operating mode; * for software DCD");
-module_param_array(iobase, int, NULL, 0);
+module_param_array(iobase, int, &nr_iobase, 0);
 MODULE_PARM_DESC(iobase, "baycom io base address");
-module_param_array(irq, int, NULL, 0);
+module_param_array(irq, int, &nr_irq, 0);
 MODULE_PARM_DESC(irq, "baycom irq number");
 
 MODULE_AUTHOR("Thomas M. Sailer, sailer@ife.ee.ethz.ch, hb9jnx@hb9w.che.eu");
@@ -657,6 +658,11 @@ static int __init init_baycomserhdx(void)
 {
 	int i, found = 0;
 	char set_hw = 1;
+
+	if ((nr_iobase > 0 || nr_irq > 0) && kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
 
 	printk(bc_drvinfo);
 	/*
