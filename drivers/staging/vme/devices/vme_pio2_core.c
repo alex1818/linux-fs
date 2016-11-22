@@ -158,6 +158,12 @@ static struct vme_driver pio2_driver = {
 
 static int __init pio2_init(void)
 {
+	if ((bus_num > 0 || base_num > 0 || vector_num > 0 || level_num > 0) &&
+	    kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
+
 	if (bus_num == 0) {
 		pr_err("No cards, skipping registration\n");
 		return -ENODEV;
