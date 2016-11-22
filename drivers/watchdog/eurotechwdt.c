@@ -427,6 +427,11 @@ static int __init eurwdt_init(void)
 {
 	int ret;
 
+	if ((io != 0x3f0 || irq != 10) && kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
+
 	ret = request_irq(irq, eurwdt_interrupt, 0, "eurwdt", NULL);
 	if (ret) {
 		pr_err("IRQ %d is not free\n", irq);

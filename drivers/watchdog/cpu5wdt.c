@@ -257,6 +257,10 @@ no_port:
 
 static int cpu5wdt_init_module(void)
 {
+	if (port != 0x91 && kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
 	return cpu5wdt_init();
 }
 

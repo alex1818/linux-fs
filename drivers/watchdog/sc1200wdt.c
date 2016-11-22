@@ -390,6 +390,11 @@ static int __init sc1200wdt_init(void)
 {
 	int ret;
 
+	if (io != -1 && kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
+
 	pr_info("%s\n", SC1200_MODULE_VER);
 
 #if defined CONFIG_PNP

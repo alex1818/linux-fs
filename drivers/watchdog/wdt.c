@@ -592,6 +592,11 @@ static int __init wdt_init(void)
 {
 	int ret;
 
+	if ((io != 0x240 || irq != 11) && kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
+
 	if (type != 500 && type != 501) {
 		pr_err("unknown card type '%d'\n", type);
 		return -ENODEV;

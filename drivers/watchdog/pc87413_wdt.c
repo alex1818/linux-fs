@@ -505,6 +505,11 @@ static int __init pc87413_init(void)
 {
 	int ret;
 
+	if (io != IO_DEFAULT && kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
+
 	pr_info("Version " VERSION " at io 0x%X\n",
 							WDT_INDEX_IO_PORT);
 
