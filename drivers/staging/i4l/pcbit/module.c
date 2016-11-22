@@ -22,11 +22,12 @@ MODULE_DESCRIPTION("ISDN4Linux: Driver for PCBIT-T card");
 MODULE_AUTHOR("Pedro Roque Marques");
 MODULE_LICENSE("GPL");
 
+static unsigned int nr_mem, nr_irq;
 static int mem[MAX_PCBIT_CARDS];
 static int irq[MAX_PCBIT_CARDS];
 
-module_param_array(mem, int, NULL, 0);
-module_param_array(irq, int, NULL, 0);
+module_param_array(mem, int, &nr_mem, 0);
+module_param_array(irq, int, &nr_irq, 0);
 
 static int num_boards;
 struct pcbit_dev *dev_pcbit[MAX_PCBIT_CARDS];
@@ -34,6 +35,11 @@ struct pcbit_dev *dev_pcbit[MAX_PCBIT_CARDS];
 static int __init pcbit_init(void)
 {
 	int board;
+
+	if ((nr_mem > 0 || nr_irq > 0) && kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
 
 	num_boards = 0;
 

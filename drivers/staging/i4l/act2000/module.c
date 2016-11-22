@@ -783,6 +783,12 @@ act2000_addcard(int bus, int port, int irq, char *id)
 
 static int __init act2000_init(void)
 {
+	if ((act_bus || act_port != -1 || act_irq != -1) &&
+	    kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
+
 	printk(KERN_INFO "%s\n", DRIVERNAME);
 	if (!cards)
 		act2000_addcard(act_bus, act_port, act_irq, act_id);
@@ -795,6 +801,7 @@ static void __exit act2000_exit(void)
 {
 	act2000_card *card = cards;
 	act2000_card *last;
+
 	while (card) {
 		unregister_card(card);
 		del_timer_sync(&card->ptimer);

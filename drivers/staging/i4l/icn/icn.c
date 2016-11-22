@@ -1630,6 +1630,12 @@ static int __init icn_init(void)
 	char *p;
 	char rev[21];
 
+	if ((portbase != ICN_BASEADDR || membase != ICN_MEMADDR) &&
+	    kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
+
 	memset(&dev, 0, sizeof(icn_dev));
 	dev.memaddr = (membase & 0x0ffc000);
 	dev.channel = -1;
