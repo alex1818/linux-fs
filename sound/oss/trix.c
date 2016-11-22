@@ -426,6 +426,11 @@ module_param(joystick, bool, 0);
 
 static int __init init_trix(void)
 {
+	if (kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
+
 	printk(KERN_INFO "MediaTrix audio driver Copyright (C) by Hannu Savolainen 1993-1996\n");
 
 	cfg.io_base = io;

@@ -441,6 +441,11 @@ static int __init init_uart401(void)
 	/* Can be loaded either for module use or to provide functions
 	   to others */
 	if (cfg_mpu.io_base != -1 && cfg_mpu.irq != -1) {
+		if (kernel_is_locked_down()) {
+			pr_err("Kernel is locked down\n");
+			return -EPERM;
+		}
+
 		printk(KERN_INFO "MPU-401 UART driver Copyright (C) Hannu Savolainen 1993-1997");
 		if (!probe_uart401(&cfg_mpu, THIS_MODULE))
 			return -ENODEV;

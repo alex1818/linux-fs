@@ -1750,6 +1750,34 @@ static int __init msnd_init(void)
 	static msnd_pinnacle_cfg_t pinnacle_devs;
 #endif /* MSND_CLASSIC */
 
+	if ((
+#ifndef MODULE
+#ifdef MSND_CLASSIC
+		    io != CONFIG_MSNDCLAS_IO ||
+		    irq != CONFIG_MSNDCLAS_IRQ ||
+		    mem != CONFIG_MSNDCLAS_MEM
+#else
+		    io != CONFIG_MSNDPIN_IO ||
+		    irq != CONFIG_MSNDPIN_IRQ ||
+		    mem != CONFIG_MSNDPIN_MEM ||
+		    cfg != CONFIG_MSNDPIN_CFG ||
+		    mpu_io != CONFIG_MSNDPIN_MPU_IO ||
+		    mpu_irq != CONFIG_MSNDPIN_MPU_IRQ ||
+		    ide_io0 != CONFIG_MSNDPIN_IDE_IO0 ||
+		    ide_io1 != CONFIG_MSNDPIN_IDE_IO1 ||
+		    ide_irq != CONFIG_MSNDPIN_IDE_IRQ ||
+		    joystick_io != CONFIG_MSNDPIN_JOYSTICK_IO
+#endif
+#else
+		    /* Must be command-line configured if a module. */
+		    true
+#endif
+	     ) && kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
+
+
 	printk(KERN_INFO LOGNAME ": Turtle Beach " LONGNAME " Linux Driver Version "
 	       VERSION ", Copyright (C) 1998 Andrew Veliath\n");
 

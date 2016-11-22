@@ -1986,6 +1986,9 @@ static int __init init_waveartist(void)
 		irq  = 12;
 		dma  = 3;
 		dma2 = 7;
+	} else if (kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
 	}
 
 	mix = &waveartist_mixer;

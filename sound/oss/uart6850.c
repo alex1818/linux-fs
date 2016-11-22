@@ -320,6 +320,11 @@ module_param(irq, int, 0);
 
 static int __init init_uart6850(void)
 {
+	if (kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
+
 	cfg_mpu.io_base = io;
 	cfg_mpu.irq = irq;
 

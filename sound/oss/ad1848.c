@@ -2983,6 +2983,12 @@ static int __init ad1848_isapnp_probe(struct address_info *hw_config)
 
 static int __init init_ad1848(void)
 {
+	if ((io != -1 || irq != -1 || dma != -1 || dma2 != -1) &&
+	    kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
+
 	printk(KERN_INFO "ad1848/cs4248 codec driver Copyright (C) by Hannu Savolainen 1993-1996\n");
 
 #ifdef CONFIG_PNP

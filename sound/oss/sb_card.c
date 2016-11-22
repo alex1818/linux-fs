@@ -304,6 +304,13 @@ static int __init sb_init(void)
 	int lres = 0;
 	int pres = 0;
 
+	if ((mpu_io != 0 || io != -1 || irq != -1 ||
+	     dma != -1 || dma16	!= -1) &&
+	    kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
+
 	printk(KERN_INFO "sb: Init: Starting Probe...\n");
 
 	if(io != -1 && irq != -1 && dma != -1) {

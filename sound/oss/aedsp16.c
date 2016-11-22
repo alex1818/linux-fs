@@ -1319,7 +1319,13 @@ MODULE_AUTHOR("Riccardo Facchetti <fizban@tin.it>");
 MODULE_DESCRIPTION("Audio Excel DSP 16 Driver Version " VERSION);
 MODULE_LICENSE("GPL");
 
-static int __init do_init_aedsp16(void) {
+static int __init do_init_aedsp16(void)
+{
+	if (kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
+
 	printk("Audio Excel DSP 16 init driver Copyright (C) Riccardo Facchetti 1995-98\n");
 	if (io == -1 || dma == -1 || irq == -1) {
 		printk(KERN_INFO "aedsp16: I/O, IRQ and DMA are mandatory\n");

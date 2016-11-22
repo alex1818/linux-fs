@@ -1177,6 +1177,10 @@ static int pssmpu = 0, pssmss = 0;
 
 static int __init init_pss(void)
 {
+	if (kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
 
 	if(pss_no_sound)		/* If configuring only nonsound components */
 	{

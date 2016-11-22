@@ -401,6 +401,11 @@ MODULE_LICENSE("GPL");
 
 static int __init init_pas2(void)
 {
+	if (kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
+
 	printk(KERN_INFO "Pro Audio Spectrum driver Copyright (C) by Hannu Savolainen 1993-1996\n");
 
 	cfg.io_base = io;

@@ -1758,6 +1758,12 @@ static int __init init_mpu401(void)
 	   to others */
 	if (io != -1 && irq != -1) {
 		struct resource *ports;
+
+		if (kernel_is_locked_down()) {
+			pr_err("Kernel is locked down\n");
+			return -EPERM;
+		}
+
 	        cfg.irq = irq;
 		cfg.io_base = io;
 		ports = request_region(io, 2, "mpu401");

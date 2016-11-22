@@ -1208,6 +1208,11 @@ static int __init init_opl3 (void)
 
 	if (io != -1)	/* User loading pure OPL3 module */
 	{
+		if (kernel_is_locked_down()) {
+			pr_err("Kernel is locked down\n");
+			return -EPERM;
+		}
+
 		if (!opl3_detect(io))
 		{
 			return -ENODEV;
