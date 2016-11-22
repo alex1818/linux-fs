@@ -41,8 +41,9 @@ MODULE_ALIAS("platform:cs5535-smb");
 MODULE_LICENSE("GPL");
 
 #define MAX_DEVICES 4
+static unsigned int nr_base = 0;
 static int base[MAX_DEVICES] = { 0x820, 0x840 };
-module_param_array(base, int, NULL, 0);
+module_param_array(base, int, &nr_base, 0);
 MODULE_PARM_DESC(base, "Base addresses for the ACCESS.bus controllers");
 
 #define POLL_TIMEOUT	(HZ/5)
@@ -573,6 +574,11 @@ static __init void scx200_scan_isa(void)
 
 static int __init scx200_acb_init(void)
 {
+	if (nr_base > 0 && kernel_is_locked_down()) {
+		pr_err("Kernel is locked down\n");
+		return -EPERM;
+	}
+
 	pr_debug("NatSemi SCx200 ACCESS.bus Driver\n");
 
 	/* First scan for ISA-based devices */

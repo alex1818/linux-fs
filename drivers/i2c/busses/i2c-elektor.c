@@ -328,4 +328,7 @@ module_param(irq, int, 0);
 module_param(clock, int, 0);
 module_param(own, int, 0);
 module_param(mmapped, int, 0);
+
+#undef module_lockdown_check
+#define module_lockdown_check() (true)
 module_isa_driver(i2c_elektor_driver, 1);

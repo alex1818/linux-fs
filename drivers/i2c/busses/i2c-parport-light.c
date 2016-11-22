@@ -219,6 +219,11 @@ static int __init i2c_parport_init(void)
 {
 	int err;
 
+	if ((base || irq) && kernel_is_locked_down()) {
+		pr_err(DRVNAME ": Kernel is locked down\n");
+		return -EPERM;
+	}
+
 	if (type < 0) {
 		printk(KERN_ERR DRVNAME ": adapter type unspecified\n");
 		return -ENODEV;
