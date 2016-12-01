@@ -25,8 +25,8 @@ MODULE_LICENSE("GPL");
 static int mem[MAX_PCBIT_CARDS];
 static int irq[MAX_PCBIT_CARDS];
 
-module_param_array(mem, int, NULL, 0);
-module_param_array(irq, int, NULL, 0);
+module_param_hw_array(mem, int, iomem, NULL, 0);
+module_param_hw_array(irq, int, irq, NULL, 0);
 
 static int num_boards;
 struct pcbit_dev *dev_pcbit[MAX_PCBIT_CARDS];
