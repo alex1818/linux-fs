@@ -1094,11 +1094,11 @@ MODULE_PARM_DESC(type, "Hardware type (0 = home-brew, 1 = IRdeo,"
 		 " 2 = IRdeo Remote, 3 = AnimaX, 4 = IgorPlug,"
 		 " 5 = NSLU2 RX:CTS2/TX:GreenLED)");
 
-module_param(io, int, S_IRUGO);
+module_param_hw(io, int, ioport, S_IRUGO);
 MODULE_PARM_DESC(io, "I/O address base (0x3f8 or 0x2f8)");
 
 /* some architectures (e.g. intel xscale) have memory mapped registers */
-module_param(iommap, bool, S_IRUGO);
+module_param_hw(iommap, bool, other, S_IRUGO);
 MODULE_PARM_DESC(iommap, "physical base for memory mapped I/O"
 		" (0 = no memory mapped io)");
 
@@ -1107,13 +1107,13 @@ MODULE_PARM_DESC(iommap, "physical base for memory mapped I/O"
  * on 32bit word boundaries.
  * See linux-kernel/drivers/tty/serial/8250/8250.c serial_in()/out()
  */
-module_param(ioshift, int, S_IRUGO);
+module_param_hw(ioshift, int, other, S_IRUGO);
 MODULE_PARM_DESC(ioshift, "shift I/O register offset (0 = no shift)");
 
-module_param(irq, int, S_IRUGO);
+module_param_hw(irq, int, irq, S_IRUGO);
 MODULE_PARM_DESC(irq, "Interrupt (4 or 3)");
 
-module_param(share_irq, bool, S_IRUGO);
+module_param_hw (share_irq, bool, other, S_IRUGO);
 MODULE_PARM_DESC(share_irq, "Share interrupts (0 = off, 1 = on)");
 
 module_param(sense, int, S_IRUGO);

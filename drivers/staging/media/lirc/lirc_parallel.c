@@ -725,10 +725,10 @@ MODULE_DESCRIPTION("Infrared receiver driver for parallel ports.");
 MODULE_AUTHOR("Christoph Bartelmus");
 MODULE_LICENSE("GPL");
 
-module_param(io, int, S_IRUGO);
+module_param_hw(io, int, ioport, S_IRUGO);
 MODULE_PARM_DESC(io, "I/O address base (0x3bc, 0x378 or 0x278)");
 
-module_param(irq, int, S_IRUGO);
+module_param_hw(irq, int, irq, S_IRUGO);
 MODULE_PARM_DESC(irq, "Interrupt (7 or 5)");
 
 module_param(tx_mask, int, S_IRUGO);
